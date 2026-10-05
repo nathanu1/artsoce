@@ -522,7 +522,8 @@ class GameLayer:
         if item is None:
             raise GameRuleError("the item for this request is gone")
         place = req["place_label"].split(": ", 1)[-1]
-        line = f"I made the {req['wish']} you asked for. There is a new {item.name} in the {place} now!"
+        wish = re.sub(r"^(a|an|the|some)\s+", "", req["wish"].strip(), flags=re.IGNORECASE)
+        line = f"I made the {wish} you asked for. There is a new {item.name} in the {place} now!"
         reply = self._reply(ident, view, now, line, event_note=f"{self.builder_cap} shows {ident.name} the new {item.name}.", mock={"_delivery": req["wish"]})
         self._remember_exchange(ident, view, now, line, reply.utterance)
         req["status"] = "fulfilled"
@@ -700,7 +701,7 @@ class GameLayer:
         net = {t: cost.get(t, 0) - refund.get(t, 0) for t in set(cost) | set(refund)}
         short = {t: n - have.get(t, 0) for t, n in net.items() if n > have.get(t, 0)}
         if short:
-            problems.append("needs " + " and ".join(f"{n} more {self.content.theme(t).name}" for t, n in sorted(short.items())) + " motifs")
+            problems.append("needs " + " and ".join(f"{n} more {self.content.theme(t).name} motif{'' if n == 1 else 's'}" for t, n in sorted(short.items())))
         return {
             "ok": not problems and all(v.ok for v in verdicts),
             "problems": problems,

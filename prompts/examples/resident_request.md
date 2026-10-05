@@ -44,7 +44,7 @@
 
 ## Smallest successful call
 
-Ledger call 12 · scope `examples-game` · sim time 2023-02-13T10:00:00 · agent `klaus_mueller` · model `mock-llm-v1` · status `ok` · tokens 791 in / 80 out (estimated)
+Ledger call 12 · scope `examples-game` · sim time 2023-02-13T10:00:00 · agent `klaus_mueller` · model `mock-llm-v1` · status `ok` · tokens 791 in / 83 out (estimated)
 
 **System**
 
@@ -104,7 +104,7 @@ Respond with JSON: {"wish": "<a short phrase, e.g. a quiet corner to read>", "th
 **Raw output**
 
 ```json
-{"wish": "a bookshelf for my notes", "theme": "lore", "place": "Dorm for Oak Hill College: common room", "reason": "It would make my days at Dorm for Oak Hill College: common room nicer.", "request_line": "Could you make a bookshelf for my notes for me at Dorm for Oak Hill College: common room? It would mean a lot."}
+{"wish": "a bookshelf for my notes", "theme": "lore", "place": "Dorm for Oak Hill College: common room", "reason": "It would make my days at the common room at Dorm for Oak Hill College nicer.", "request_line": "Could you make a bookshelf for my notes for me at the common room at Dorm for Oak Hill College? It would mean a lot."}
 ```
 
 **Validated output**
@@ -114,8 +114,8 @@ Respond with JSON: {"wish": "<a short phrase, e.g. a quiet corner to read>", "th
   "wish": "a bookshelf for my notes",
   "theme": "lore",
   "place": "Dorm for Oak Hill College: common room",
-  "reason": "It would make my days at Dorm for Oak Hill College: common room nicer.",
-  "request_line": "Could you make a bookshelf for my notes for me at Dorm for Oak Hill College: common room? It would mean a lot."
+  "reason": "It would make my days at the common room at Dorm for Oak Hill College nicer.",
+  "request_line": "Could you make a bookshelf for my notes for me at the common room at Dorm for Oak Hill College? It would mean a lot."
 }
 ```
 

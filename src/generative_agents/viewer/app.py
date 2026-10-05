@@ -93,6 +93,22 @@ def create_app(run_dir: Path, experiment_dir: Path | None = None) -> FastAPI:
     def events(type: str | None = None, agent: str | None = None, limit: int = 200, after: int = 0) -> list[dict[str, Any]]:
         return data.events(type, agent, min(limit, 2000), after)
 
+    @app.get("/api/manifest")
+    def manifest() -> dict[str, Any]:
+        return data.manifest()
+
+    @app.get("/api/calls")
+    def calls(task: str | None = None, agent: str | None = None, limit: int = 100, before: int | None = None) -> list[dict[str, Any]]:
+        return data.calls(task=task, agent=agent, limit=min(limit, 500), before=before)
+
+    @app.get("/api/call/{call_id}")
+    def call(call_id: int) -> dict[str, Any]:
+        return guard(data.call, call_id)
+
+    @app.get("/api/diffusion")
+    def diffusion() -> dict[str, Any]:
+        return data.diffusion()
+
     @app.get("/api/evaluation")
     def evaluation() -> Any:
         return data.evaluation() or {}

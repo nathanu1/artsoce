@@ -39,7 +39,7 @@
 
 ## Smallest successful call
 
-Ledger call 82 · scope `examples-game` · sim time 2023-02-13T10:05:00 · agent `klaus_mueller` · model `mock-llm-v1` · status `ok` · tokens 755 in / 22 out (estimated)
+Ledger call 82 · scope `examples-game` · sim time 2023-02-13T10:05:00 · agent `klaus_mueller` · model `mock-llm-v1` · status `ok` · tokens 756 in / 22 out (estimated)
 
 **System**
 
@@ -74,7 +74,7 @@ What Klaus Mueller remembers that may be relevant:
 - Klaus Mueller had a conversation with Maria Lopez. This is a conversation about how their days are going.
 - Klaus Mueller said to Maria Lopez: "Oh, also: This is very important -- I have a crush on Maria Lopez."
 Recent exchange with the town builder:
-Klaus Mueller: Could you make a bookshelf for my notes for me at Dorm for Oak Hill College: common room? It would mean a lot.
+Klaus Mueller: Could you make a bookshelf for my notes for me at the common room at Dorm for Oak Hill College? It would mean a lot.
 
 The town builder says to Klaus Mueller: "What are you reading these days?"
 

@@ -378,6 +378,94 @@ class RunData:
             for r in self.q(sql, tuple(params))
         ]
 
+    # ------------------------------------------------------------------ provenance and diffusion
+    def manifest(self) -> dict[str, Any]:
+        path = self.run_dir / "manifest.json"
+        return json.loads(path.read_text()) if path.exists() else {}
+
+    def _ledger(self) -> Any:
+        import sqlite3
+
+        path = self.run_dir / "provider.sqlite"
+        if not path.exists():
+            return None
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def calls(self, *, task: str | None, agent: str | None, limit: int, before: int | None) -> list[dict[str, Any]]:
+        """Recorded model calls, newest first (what was asked, of which model, with what result)."""
+
+        conn = self._ledger()
+        if conn is None:
+            return []
+        sql = (
+            "SELECT id, scope, step, sim_time, task, template_id, agent_id, purpose, provider, model, served_model, status, "
+            "attempt_kind, input_tokens, output_tokens, tokens_estimated, cost_usd, latency_ms FROM calls WHERE 1=1"
+        )
+        params: list[Any] = []
+        if task:
+            sql += " AND task=?"
+            params.append(task)
+        if agent:
+            sql += " AND agent_id=?"
+            params.append(agent)
+        if before:
+            sql += " AND id < ?"
+            params.append(before)
+        rows = [dict(r) for r in conn.execute(sql + " ORDER BY id DESC LIMIT ?", (*params, limit))]
+        conn.close()
+        return rows
+
+    def call(self, call_id: int) -> dict[str, Any]:
+        conn = self._ledger()
+        if conn is None:
+            raise KeyError(call_id)
+        row = conn.execute("SELECT * FROM calls WHERE id=?", (call_id,)).fetchone()
+        conn.close()
+        if row is None:
+            raise KeyError(call_id)
+        d = dict(row)
+        for k in ("settings_json", "schema_json", "metadata_json", "parsed_json", "validation_errors"):
+            if d.get(k):
+                try:
+                    d[k] = json.loads(d[k])
+                except ValueError:
+                    pass
+        return d
+
+    def diffusion(self) -> dict[str, Any]:
+        """Who has received word of each seeded event, from whom, and every transmission (researcher only)."""
+
+        from ..evaluation.diffusion import transmissions
+        from ..evaluation.evidence import load_topics, topic_evidence
+        from ..scenario.loader import load_scenario
+
+        sc = load_scenario(repo_path(self.cfg.scenario.path), population=self.cfg.scenario.population)
+        topics = load_topics(sc.events)
+        agents = [r["id"] for r in self.q("SELECT id FROM agents ORDER BY order_index")]
+        out: dict[str, Any] = {}
+        with self.lock:
+            for key, topic in topics.items():
+                per = {}
+                for aid in agents:
+                    ev = topic_evidence(self.db, aid, topic)
+                    strong = [e for e in ev if e["strong"]]
+                    first = strong[0] if strong else None
+                    per[aid] = {
+                        "aware": bool(strong),
+                        "seeded": any(e["origin"] == "seed" for e in strong),
+                        "first": {k: first[k] for k in ("created_at", "origin", "speaker_id", "conversation_id", "text")} if first else None,
+                        "evidence": len(strong),
+                        "weak": len(ev) - len(strong),
+                    }
+                out[key] = {
+                    "label": sc.events[key].get("label", key),
+                    "agents": per,
+                    "transmissions": transmissions(self.db, topic),
+                }
+        return out
+
     def evaluation(self) -> dict[str, Any] | None:
         base = self.run_dir / "exports" / "evaluation"
         if not (base / "summary.json").exists():

@@ -500,13 +500,23 @@ class MockLLM:
         fitting = [p for p in places if theme in p.get("fits", [])] or places
         place = fitting[rng.randrange(len(fitting))]["label"] if fitting else ""
         wish = self._REQUEST_WISHES.get(theme, "something nice")
+        where = self._place_phrase(place) if place else "home"
         return {
             "wish": wish,
             "theme": theme,
             "place": place,
-            "reason": f"It would make my days at {place or 'home'} nicer.",
-            "request_line": f"Could you make {wish} for me at {place}? It would mean a lot.",
+            "reason": f"It would make my days at {where} nicer.",
+            "request_line": f"Could you make {wish} for me at {where}? It would mean a lot.",
         }
+
+    @staticmethod
+    def _place_phrase(label: str) -> str:
+        """'Hobbs Cafe: cafe' -> 'Hobbs Cafe'; 'Oak Hill College: library' -> 'the library at Oak Hill College'."""
+        sector, _, arena = label.partition(": ")
+        words = set(re.findall(r"[a-z0-9']+", sector.lower()))
+        if not arena or set(re.findall(r"[a-z0-9']+", arena.lower())) <= words:
+            return sector
+        return f"{arena} at {sector}" if "'s " in f"{arena} " else f"the {arena} at {sector}"
 
     def _t_interview(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         q = v.get("_question", "").lower()

@@ -9,17 +9,23 @@ Smallville map. The paper's two evaluations (matched-history interviews and end-
 measures) and one extension (reflection on/off in independent runs) are implemented with
 auditable evidence.
 
+On top of it sits an optional **town game** (`ga play`): a cozy storybook-diorama town in the
+browser where you chat with residents, build what they wish for and decorate the town, with every
+resident thought coming from a local open-weight model through Ollama or LM Studio at no API cost.
+See [Town game](#town-game-on-your-own-computer) and [`docs/game.md`](docs/game.md).
+
 Every setting is tagged as **paper**, **released code**, **engineering choice** or
 **extension** in [`docs/reproduction_spec.md`](docs/reproduction_spec.md), which also lists every
 deviation.
 
 > **What has actually been validated.** All of it runs offline with a deterministic mock model
-> and hash embeddings: 148 tests pass, a five-agent and a 25-agent two-day simulation complete,
-> and evaluation, interviews, exports, replay, the viewer and a ten-run reflection experiment work
-> on them. **No live model has
-> been called** (no API credentials were available), so nothing here is evidence about how
-> Claude-driven agents behave. Mock runs are labeled MOCK everywhere; their outcomes are
-> structural demonstrations, never research results.
+> and hash embeddings: 176 Python tests and 22 front-end tests pass, a five-agent and a 25-agent
+> two-day simulation complete, and evaluation, interviews, exports, replay, the viewer, a ten-run
+> reflection experiment and the town game work on them. **No live model has been called**: no
+> API credentials were available, and Ollama could not be installed in the build environment, so
+> the local-model adapters were tested against a fake server that follows the documented API.
+> Nothing here is evidence about how Claude-driven or open-weight agents behave. Mock runs are
+> labeled MOCK everywhere; their outcomes are structural demonstrations, never research results.
 
 ## Setup
 
@@ -55,7 +61,7 @@ A six-hour smoke run takes about five seconds: `ga run --config configs/offline_
 | Command | What it does |
 | --- | --- |
 | `ga doctor [--config FILE]` | Validates the config, scenario audit, prompt templates, providers and keys, pricing file, paper PDF hash and disk. |
-| `ga run --config FILE [--set key=value] [--max-steps N] [--until ISO] [--interventions FILE] [--yes]` | Bounded headless simulation. Live configs print their limits and need `--yes`. |
+| `ga run --config FILE [--set key=value] [--max-steps N] [--until ISO] [--interventions FILE] [--actions FILE] [--yes]` | Bounded headless simulation. Live API configs print their limits and need `--yes` (local models do not). `--actions` plays a scripted town-game session. |
 | `ga resume --run-dir DIR [--set budget.max_calls=N]` | Continues from the last checkpoint. Calls made after it are re-used from the ledger, not paid twice. |
 | `ga replay --run-dir DIR [--out DIR]` | Re-executes a run from its recorded responses with **no model calls** and checks the state is identical. |
 | `ga inspect-memory --run-dir DIR --agent ID --query TEXT [--at ISO] [--condition C] [--evidence MEMORY_ID]` | Retrieval with recency/importance/relevance components, "why #1 outranked #2", and reflection evidence trees. |
@@ -66,6 +72,7 @@ A six-hour smoke run takes about five seconds: `ga run --config configs/offline_
 | `ga evaluate --run-dir DIR` | §7 measures with memory-validated evidence and a Markdown report. |
 | `ga experiment --protocol FILE [--measured-run DIR] [--execute] [--yes]` | Reflection extension: plans and projects usage by default; runs only with `--execute`. |
 | `ga serve --run-dir DIR [--experiment DIR]` | Local read-only viewer and inspector. |
+| `ga play --config FILE` / `--resume DIR` / `--replay DIR` `[--speed S] [--paused] [--open] [--port N]` | The town game (extension): a live town in the browser at http://127.0.0.1:8080, research inspector at `/inspector`. Replays make no model calls. |
 | `ga export --run-dir DIR` | JSONL events, transcripts, retrieval traces and model calls; CSV memories, plans and usage; Markdown run report. |
 | `ga prompt-examples --run-dir DIR [DIR ...] [--out DIR]` | One page per prompt template: source, information scope, output schema and the smallest recorded call exactly as sent and received (plus a repaired exchange, when there was one). |
 | `ga import-scenario --source CHECKOUT` / `ga audit-scenario` | Rebuild scenario files from the official data (byte-identical) and audit seeds, knowledge scoping, spawn tiles and places. |
@@ -80,6 +87,10 @@ A six-hour smoke run takes about five seconds: `ga run --config configs/offline_
 | `configs/reference_n25.yaml` | All 25 agents, two days, live. Start only after a live pilot has been measured. |
 | `configs/interviews_reference.yaml` | Appendix B interviews on the final snapshot, four conditions. |
 | `configs/experiment_reflection.yaml` / `_mock.yaml` | Reflection on vs off, five matched seeds per condition (live / offline). |
+| `configs/ollama_pilot.yaml` | Three agents, two days, `llama3.1:8b` and `nomic-embed-text` on a local Ollama. No API cost. |
+| `configs/experiment_reflection_ollama.yaml` | The reflection extension on a local model. |
+| `configs/town_mock.yaml` / `town_ollama.yaml` / `town_n25_ollama.yaml` | The town game: offline MOCK; three residents on Ollama (start here); all 25 residents on Ollama. |
+| `configs/game/` | Town game content: six affinity themes, motifs and gifts, catalog, paints and templates, Town Pulse levels, the Town Square, resident looks, a demo action script. |
 | `configs/defaults.yaml` | Every setting with its default, for reference. |
 | `configs/pricing.yaml` | USD per million tokens from the [published pricing page](https://platform.claude.com/docs/en/about-claude/pricing), fetched 2026-10-05. Without it, cost is reported as "unpriced". |
 
@@ -103,6 +114,41 @@ input tokens estimated from the real prompts; live dialogue, thinking and plan l
 differ, so measure before you scale. The adapter's structured outputs, effort setting and
 optional server-side refusal fallback follow the current Anthropic SDK, but have not been run
 against the API from this project.
+
+## Town game on your own computer
+
+```bash
+ga play --config configs/town_mock.yaml --open     # offline demo with the MOCK model, no downloads
+```
+
+For real resident minds at zero cost, install [Ollama](https://ollama.com/) and pull an
+open-weight model (8 GB of RAM minimum for an 8B model, 16 GB comfortable):
+
+```bash
+ollama pull llama3.1:8b          # about 4.9 GB; mistral:7b (4.4 GB) or llama3:8b (4.7 GB) also work
+ollama pull nomic-embed-text
+ga doctor --config configs/town_ollama.yaml
+ga play --config configs/town_ollama.yaml --open
+```
+
+This is the three-resident vertical slice (Isabella, Maria, Klaus); `configs/town_n25_ollama.yaml`
+runs all 25 once the slice works well on your machine. LM Studio and llama.cpp work through the
+OpenAI-compatible adapter (`providers.llm.kind: openai_compatible`, `base_url:
+http://localhost:1234/v1`). `ga play --resume runs/<id>` continues a town and
+`ga play --replay runs/<id>` replays it with no model calls.
+
+In the town you can watch residents follow their own schedules and talk to each other, chat with
+them, take on requests they generate from their own goals, give gifts, collect motifs, and build
+and decorate (placement checks, snapping, paint, undo and redo, duplication, templates and
+affinity feedback) while the Town Pulse grows through five levels. The notebook (N) holds
+requests, collections, residents and the town. The research inspector (`/inspector`) shows
+memories, retrieval scores, plans, reflections, information diffusion and the provenance of every
+model call; nothing in it is ever sent to residents. Game meters never enter a prompt either.
+Design, rules and what each action does to a resident's memory: [`docs/game.md`](docs/game.md).
+
+The front end lives in `frontend/` (React, Tailwind, Three.js). Its built bundle is committed, so
+`ga play` needs no Node.js; to change it, `cd frontend && npm ci && npm run dev` (with `ga play`
+running) and `npm run build`.
 
 ## How it works
 
@@ -157,8 +203,9 @@ The full list, with sources, is in the spec (§3 and §6). In short:
 ## Tests
 
 ```bash
-pytest             # 148 tests, offline, about 20 seconds
+pytest             # 176 tests, offline, about 30 seconds
 ruff check src tests examples
+cd frontend && npm ci && npm test && npm run typecheck   # 22 front-end unit tests
 ```
 
 They cover the mechanisms that could invalidate an experiment: the recency formula and
@@ -168,8 +215,9 @@ validity and malformed output; plan validation, just-in-time decomposition, repl
 and idempotent completion; private dialogue, reservation and limits; pathfinding, perception and
 constraints; the burning stove, occupied bathroom, empty fridge, nearby friend and street fire
 scenarios; checkpoint/resume and replay equivalence; interview masks and side effects; toy
-examples for diffusion, density and attendance; budgets and failures. Tests prove structure, not
-believable behavior.
+examples for diffusion, density and attendance; budgets and failures; the local-model adapters
+against a fake Ollama server; the town game's placement rules, memory channels, meters kept out of
+prompts, replay and crash resume. Tests prove structure, not believable behavior.
 
 One test checks that `prompts/examples/` matches the current templates. After changing a template,
 regenerate the examples (about two minutes):
@@ -191,7 +239,7 @@ rm -r prompts/examples && ga prompt-examples --run-dir runs/examples-main runs/e
 
 ```
 src/generative_agents/   config, schemas, db, prompting, cli
-  providers/             gateway, ledger, Anthropic/OpenAI adapters, mock, embeddings, pricing
+  providers/             gateway, ledger, Anthropic/OpenAI/Ollama/OpenAI-compatible adapters, mock, embeddings, pricing
   memory/                store, retrieval, traces, evidence, masks, seeds
   cognition/             importance, summary, reflection, planning, location, reaction, dialogue
   world/                 map tree, spatial memory, perception, navigation, state, constraints
@@ -199,11 +247,14 @@ src/generative_agents/   config, schemas, db, prompting, cli
   scenario/              importer, loader, audit
   evaluation/            interviews, banks, diffusion, relationships, attendance, failures, stats, experiment
   viewer/                FastAPI app and static front end
-prompts/                 21 versioned prompt templates (front matter names the source of each)
+  game/                  town game extension: content, affinity, placement, action log, live session, API
+    web/                 built town front end (generated by frontend/, committed)
+frontend/                town front end source: React, Tailwind, Three.js (npm run build)
+prompts/                 23 versioned prompt templates (front matter names the source of each)
   examples/              one recorded input/output per template (MOCK outputs; see its README)
 scenarios/               imported Smallville data: smallville_n25, pilot3, pilot5
-configs/                 example configurations and the Appendix B question banks
-docs/                    reproduction spec, walkthrough, experiment protocol
+configs/                 example configurations, Appendix B question banks, game/ content
+docs/                    reproduction spec, walkthrough, experiment protocol, town game
 examples/                walkthrough.py
 tests/
 ```

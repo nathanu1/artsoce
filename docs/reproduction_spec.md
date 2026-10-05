@@ -229,6 +229,7 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 | O-2 | No cross-replicate reuse of stochastic samples. | prompt §11 | E | cache scope = run ID for generation; global for pure embeddings | `test_gateway.py::test_cache_scope_isolates_independent_runs` | |
 | O-3 | Budgets: calls, input and output tokens, runtime, optional cost; exhaustion checkpoints instead of fabricating. | prompt §11 | E | `simulation/budget.py`; engine rollback | `test_gateway.py::test_budget_ceiling_stops_before_the_call`, `test_engine.py::test_budget_exhaustion_rolls_back_and_resume_finishes` | Cost stays "unpriced" unless a price table is configured (`configs/pricing.yaml`, from the published price page). |
 | O-4 | Anthropic adapter; deterministic mock; optional OpenAI adapter; embeddings backends with recorded model and dimensions. | prompt §2 | E | `providers/{anthropic_provider, mock, openai_provider, embeddings}.py` | `test_gateway.py::test_mock_provider_is_deterministic` | Mock embeddings are test fixtures only. **The live adapters have not been exercised against the real APIs** (no credentials). |
+| O-7 | Zero-cost local models: Ollama's native API (`/api/chat` with a JSON-schema `format`, `/api/embed`, model digests from `/api/tags`) and any OpenAI-compatible local server (LM Studio, llama.cpp). | user request | E | `providers/{local_http, ollama_provider, openai_compatible}.py`; `configs/ollama_pilot.yaml`, `town_ollama.yaml` | `test_local_providers.py` (10 tests against `tests/fake_ollama.py`, including `::test_a_simulation_runs_over_http_and_replays_without_any_ollama_request`, `::test_prompt_larger_than_the_context_window_is_refused_before_sending`, `::test_truncated_output_and_missing_model_fail_visibly`) | Recorded cost is 0 and no key is needed. Prompts that would overflow `num_ctx` are refused before sending; `done_reason: length` counts as a failure, never a partial answer. **Not run against a real Ollama or LM Studio** (neither could be installed in the build environment). |
 | O-5 | Run manifest. | prompt §11 | E | `Simulation.write_manifest` | `test_engine.py::test_manifest_labels_mock_runs` | |
 | O-6 | Small input/output examples and raw-output traces for every task, so each can be inspected or changed on its own. | prompt §2 | E | `prompt_examples.py`, `ga prompt-examples`; committed set in `prompts/examples/` | `test_prompt_examples.py::test_examples_show_exact_calls_repairs_and_their_source`, `::test_committed_examples_match_the_current_templates` | One page per template: source, information scope, output schema, the smallest successful call exactly as sent and received, and a repaired exchange when the run had one. The committed set comes from offline runs (MOCK outputs: format only). The full trace of a run is `model_calls.jsonl` (`ga export`). |
 
@@ -239,6 +240,22 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 | R-1 | Full architecture vs reflection disabled *throughout* independent simulations from identical authored worlds. | prompt §10 | X | `evaluation/experiment.py`, `configs/experiment_reflection*.yaml` | `test_experiment.py::test_protocol_matches_seeds_and_plans_without_calling_models`, `::test_execute_reports_every_run_and_missing_outcomes` | |
 | R-2 | Disable every reflection-generating path (trigger, questions, insights, post-conversation inferences); keep observational transcript summaries. | prompt §10 | X | `architecture.reflection: false` | `test_experiment.py::test_no_reflection_disables_every_reflective_path_but_keeps_transcript_summaries` | |
 | R-3 | Primary outcomes: supported event recall; attendance among invited guests. Report exposure, invitations, unsupported claims, calls, tokens, cost, runtime; include failed and truncated runs. | prompt §10 | X | `evaluation/experiment.py` | `test_experiment.py::test_run_level_summary_statistics`, `::test_execute_reports_every_run_and_missing_outcomes`, `::test_strip_chart_draws_every_run_on_a_fixed_axis` | Run is the unit of analysis; bootstrap interval and exact permutation test are exploratory. The report has a per-condition table (mean, SD, median, range), one-dot-per-run plots on a fixed axis, each run's mode, and links to each run's evaluation report. |
+
+### 2S. Town game (extension)
+
+Everything here is class X, off unless `game.enabled: true`; design and rules in [`game.md`](game.md).
+
+| Req | Behavior | Source | Class | Implementation | Tests | Deviation or note |
+| --- | --- | --- | --- | --- | --- | --- |
+| S-1 | The player reaches residents only through talk, the paper's two interventions (inner voice, object state) and objects placed in the world. | p. 6 (user interactions); user request | X | `game/layer.py` (`_do_chat`, `_do_whisper`, `_do_object_state`, `_do_build`) | `test_game.py::test_chat_gift_and_search_go_through_memory_and_meters`, `::test_the_papers_interventions_are_available_and_logged` | The builder's lines are stored as statements heard and the replies as the resident's own statements, with scored importance. |
+| S-2 | Requests come from each resident's own goals, plan and memories; the place is copied from the resident's spatial memory and must fit the requested kind. | user request | X | `resident_request` prompt; validator in `_generate_request` | `test_game.py::test_requests_come_from_known_places_and_complete_through_building` | A failed call raises a visible failure; nothing is invented. |
+| S-3 | Placed items are real world objects: perceived, usable, blocking. | user request | X | `game/world_edit.py` (rebuild from the base map plus the item list) | `test_game.py::test_placed_items_become_perceivable_objects_and_block_paths`, `::test_the_town_square_is_a_real_place_and_gardens_take_decor` | |
+| S-4 | Placement validation names every problem, including disconnecting the walkable town; batches are all or nothing; removals refund. | user request | X | `WorldEditor.validate`, `GameLayer.validate_build` | `test_game.py::test_placement_rules_name_every_problem`, `::test_blocking_items_may_not_cut_the_town_in_two`, `::test_build_batches_are_all_or_nothing_and_removal_refunds` | |
+| S-5 | Game meters (Town Pulse, friendship, motifs, affinities) never enter a prompt. | user request | X | read model only (`GameLayer.state`) | `test_game.py::test_game_meters_never_reach_a_prompt` | |
+| S-6 | Player actions are logged and applied at step boundaries: exact replay with zero model calls; crash resume applies each action once. | prompt §6, §11 | X | `game/actions.py`, engine hooks | `test_game.py::test_a_played_run_replays_exactly_without_any_model_call`, `::test_resume_after_a_crash_reapplies_player_actions_once`, `test_game_session.py::test_a_session_resumes_from_disk_and_replays_without_calls` | |
+| S-7 | Live session: speed, pause, actions while paused, a model failure stops at the checkpoint and Retry continues; HTTP API. | user request | X | `game/session.py`, `game/api.py`, `ga play` | `test_game_session.py::test_live_session_steps_applies_actions_and_pauses`, `::test_a_model_failure_stops_at_the_checkpoint_and_retry_continues`, `::test_http_interface` | |
+| S-8 | Six configurable affinity themes, motifs, gifts, catalog, paints, templates, five Town Pulse levels. | user request | X | `configs/game/*.yaml`, `game/content.py`, `game/affinity.py` | `test_game.py::test_content_needs_exactly_six_consistent_themes`, `::test_affinities_come_from_identity_activities_and_places`, `::test_conversations_leave_social_motifs_to_collect` | Keyword scoring, no model calls. |
+| S-9 | Browser front end (diorama town, notebook, build mode) and a research inspector that is never fed back to residents. | user request | X | `frontend/` (built into `game/web/`); `/inspector` over the viewer API | `frontend/tests/*.test.ts` (22 tests) | Mock runs and mock embeddings are flagged in the inspector. |
 
 ## 3. Paper vs released code: verified differences
 
@@ -302,6 +319,7 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 | `constraints.policy` | `strict-v1` | E | p. 17 motivates it |
 | `seed_rendering` | `verbatim` | P, E | p. 5 |
 | `candidacy_seed_policy` | `paper_originator_only` | P | p. 15 |
+| `game.enabled` | false | X | town game extension (2S) |
 
 ## 6. Deviations and adaptations
 
@@ -322,9 +340,10 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 * **D-8 Population.** Pilot runs use documented subsets (`scenarios/pilot3`, `scenarios/pilot5`).
 * **D-9 Tick and targets.** Reference 10 s. Destination tiles are the nearest reachable tile of the
   chosen address, preferring free tiles; agents may share tiles while walking, as in the code.
-* **D-10 Viewer.** Simple shapes instead of the original art. The front end is plain JavaScript
-  on a canvas, served by FastAPI, instead of the suggested Phaser/TypeScript: it needs no build
-  step and only plays recorded frames.
+* **D-10 Viewer.** Simple shapes instead of the original art. The research viewer is plain
+  JavaScript on a canvas, served by FastAPI, instead of the suggested Phaser/TypeScript: it needs
+  no build step and only plays recorded frames. The town game's front end (an extension) is
+  React and Three.js with original toon-shaded art; its built bundle is committed.
 * **D-11 Interviews.** Clones instead of the live process; matched-history design as in the paper.
 * **D-12 Emoji.** The emoji rendering of actions (p. 5) is not reproduced; the viewer shows text.
 * **D-13 Hourly schedule.** One validated call instead of 24 per-hour calls with diversity retries.
@@ -352,6 +371,8 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 * No live model was called while building this project (no credentials were available). The
   Anthropic and OpenAI adapters follow current SDK documentation but are unvalidated against the
   real APIs; the first live run should be a short, bounded slice (README).
+* Ollama could not be installed in the build environment, so the local adapters were tested only
+  against a fake server that follows the documented API; LM Studio is untested.
 
 ## 8. Ethics and interpretation
 
@@ -361,18 +382,21 @@ viewer labels mocked, replayed and live runs.
 
 ## 9. Status
 
-All seven milestones are implemented. What was actually run:
+All seven milestones are implemented, plus the local-model adapters (O-7) and the town game extension (2S). What was actually run:
 
 | Check | Result |
 | --- | --- |
-| Test suite (`pytest`) | 148 tests pass offline (retrieval, gateway, reflection, summaries, planning, world, behavior scenarios, engine resume/replay/budget, scenario audit, interviews, metrics, statistics, exports, experiment runner, prompt examples, CLI and viewer API). |
+| Test suite (`pytest`) | 176 tests pass offline (retrieval, gateway, reflection, summaries, planning, world, behavior scenarios, engine resume/replay/budget, scenario audit, interviews, metrics, statistics, exports, experiment runner, prompt examples, CLI and viewer API, local-model adapters, town game and its live session). |
 | Scenario import | Re-importing the official checkout at `fe05a71` reproduces the committed scenario files byte for byte; the n25 audit is clean under the paper policy (party: Isabella only; candidacy: Sam only). |
 | Offline five-agent, two-day run (`configs/offline_pilot_2day.yaml`) | Completes in about a minute; evaluation, interviews (500 answers), blinded export and the viewer were exercised on it. MOCK. |
 | Offline 25-agent, two-day run | Completed in 6.6 minutes: 32,970 mock calls, about 17.9M estimated input tokens (real prompts, chars/4), 19,291 memories, 228 conversations, 3,615 reflection memories, about 0.5 GB on disk with snapshots. Evaluation took 44 s. MOCK: these numbers describe the pipeline's load, not agent behavior. |
 | Reflection extension, offline (`configs/experiment_reflection_mock.yaml`) | All 10 independent two-day runs (2 conditions × 5 seeds) completed, about 50 s each, and were evaluated and summarized at run level. MOCK: the numbers exercise the pipeline and say nothing about reflection. The live batch was not started. |
-| Prompt examples | One recorded input/output per template (21 of 21) in `prompts/examples/`, from an offline two-day run with its evaluation, interviews and judge, plus a short run with the two compatibility settings that `seed_thought` and `conversation_inferences` need. MOCK outputs. |
+| Prompt examples | One recorded input/output per template (23 of 23) in `prompts/examples/`, from an offline two-day run with its evaluation, interviews and judge, a short run with the two compatibility settings that `seed_thought` and `conversation_inferences` need, and a scripted town-game hour for `player_chat` and `resident_request`. MOCK outputs. |
 | Replay | A recorded run replays to an identical state with zero model calls; a replay with a changed setting stops as diverged instead of calling a model. |
 | Resume | A run crashed mid-way and resumed reaches the same state as an uninterrupted run, paying for no call twice. |
+| Local models (Ollama, OpenAI-compatible) | Adapters, a three-agent simulation over HTTP and its call-free replay pass against a fake server. **No real local model was run.** |
+| Town game | A scripted session (`configs/game/demo_actions.jsonl`) and live sessions in the browser were played with the MOCK model: chat, requests, gifts, search, building, replay and resume. MOCK. |
+| Front end | 22 unit tests; type check; a scripted browser walkthrough (desktop and phone sizes) of the town, notebook, chat, build mode and inspector. |
 | Live API | **Not run.** No credentials were available. |
 
 Known limitations: the mock model is a crude fixture (its dialogue and reflections are mechanical);
