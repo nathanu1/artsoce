@@ -1,0 +1,18 @@
+# The 25-agent, two-day reference scenario (paper §7), LIVE. Do not start this before a live
+# pilot has measured calls and tokens: the offline 25-agent run made ~33,000 model calls and
+# ~18M input tokens (estimated from the real prompts); live outputs, thinking and dialogue
+# lengths will differ. Project with `ga experiment --measured-run`, then set the ceilings.
+#   ga run --config configs/reference_n25.yaml --yes
+extends: live_pilot.yaml
+run:
+  name: smallville-n25
+  label: "25-agent reference"
+scenario:
+  path: scenarios/smallville_n25/scenario.yaml
+  population: null
+budget:
+  max_calls: 60000
+  max_input_tokens: 60000000
+  max_output_tokens: 25000000
+  max_runtime_s: 259200
+  max_cost_usd: 900

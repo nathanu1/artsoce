@@ -1,0 +1,18 @@
+# Offline two-day pilot: the full reference timeline (13–15 Feb 2023) for the five pilot
+# agents with the MOCK model. About a minute of wall time. Ends one simulated minute into
+# 15 Feb so every agent has made that day's plan before the final snapshot (interviews ask
+# about "today"). Use it to exercise evaluate / interview / serve end to end.
+#   ga run --config configs/offline_pilot_2day.yaml
+#   ga evaluate --run-dir runs/<run id>
+run:
+  name: pilot5-2day
+  label: "offline two-day pilot (MOCK)"
+scenario:
+  path: scenarios/pilot5/scenario.yaml
+  start: "2023-02-13T00:00:00"
+  end: "2023-02-15T00:01:00"
+budget:
+  max_calls: 20000
+providers:
+  llm: {kind: mock, model: mock-llm-v1}
+  embeddings: {kind: mock-hash, model: mock-hash-256, dims: 256}

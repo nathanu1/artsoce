@@ -102,7 +102,8 @@ def evaluate_run(
             session.close()
 
     trans = {key: dif.transmissions(state, t) for key, t in topics.items()}
-    result["transmissions"] = {k: {"count": len(v), "receivers": len(dif.first_exposures(v))} for k, v in trans.items()}
+    result["transmissions"] = {k: {"count": len(v), "receivers": len(dif.first_exposures(v, topics[k].originator))} for k, v in trans.items()}
+    result["originators"] = {k: t.originator for k, t in topics.items()}
     attendance_report = None
     party = next((t for t in topics.values() if t.window and t.place), None)
     if party is not None:
@@ -181,7 +182,7 @@ def _plots(out_dir: Path, result: dict[str, Any], trans: dict[str, list[dict[str
         claimed = [result["snapshots"][s]["diffusion"].get(key, {}).get("claimed") for s in snaps]
         supported = [result["snapshots"][s]["diffusion"].get(key, {}).get("supported_aware") for s in snaps]
         (out_dir / f"diffusion_{key}.svg").write_text(bar_chart(f"{key}: agents aware", snaps, {"claimed": claimed, "claimed and supported": supported}))
-        first = dif.first_exposures(trans.get(key, []))
+        first = dif.first_exposures(trans.get(key, []), topics[key].originator)
         edges = [(names.get(t["sender"], t["sender"]).split()[0], names.get(r, r).split()[0]) for r, t in first.items()]
         (out_dir / f"diffusion_path_{key}.svg").write_text(
             network(

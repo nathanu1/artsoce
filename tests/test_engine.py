@@ -135,3 +135,14 @@ def test_manifest_labels_mock_runs(tmp_path):
     assert m["mode"] == "mock" and m["mock_llm"] and m["mock_embeddings"] and not m["research_grade"]
     assert m["prompts"] and m["scenario"]["agents"] == PAIR
     assert m["ledger"]["calls"] > 0
+
+
+def test_no_model_calls_while_nothing_changes(tmp_path):
+    from helpers import CountingLLM
+
+    llm = CountingLLM(MockLLM(seed=5))
+    sim = make_sim(tmp_path, ["klaus_mueller"], provider=llm, start="2023-02-13T01:00:00", end="2023-02-13T03:00:00")
+    sim.run(max_steps=30)  # day plan, first perceptions, settling into sleep
+    before = len(llm.calls)
+    sim.run(max_steps=300)  # fifty minutes of uneventful sleep
+    assert len(llm.calls) == before

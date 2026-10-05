@@ -49,17 +49,26 @@ def transmissions(db: Database, topic: Topic) -> list[dict[str, Any]]:
     return out
 
 
-def first_exposures(trans: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def first_exposures(trans: list[dict[str, Any]], originator: str | None = None) -> dict[str, dict[str, Any]]:
+    """First transmission to each receiver; the originator is seeded, so it is never 'exposed'."""
+
     first: dict[str, dict[str, Any]] = {}
     for t in trans:
         r = t["receiver"]
-        if r and r not in first:
+        if r and r != originator and r not in first:
             first[r] = t
     return first
 
 
 def classify(
-    session: InterviewSession, agent_id: str, question: str, answer: str, topic_label: str, keywords: list[str], details: dict[str, list[str]]
+    session: InterviewSession,
+    agent_id: str,
+    question: str,
+    answer: str,
+    topic_label: str,
+    keywords: list[str],
+    details: dict[str, list[str]],
+    require_all: list[str] | None = None,
 ) -> dict[str, Any]:
     try:
         out = session.svc.gateway.run(
@@ -72,6 +81,8 @@ def classify(
                 "_answer": answer,
                 "_topic_keywords": keywords,
                 "_detail_patterns": details,
+                "_require_all": require_all or [],
+                "_speaker": session.identities[agent_id].name if agent_id in session.identities else "",
             },
             agent_id=agent_id,
             sim_time=session.now,
@@ -89,7 +100,7 @@ def probe_awareness(session: InterviewSession, topic: Topic, agents: list[str], 
     rows = []
     for aid in agents:
         ans = session.ask(aid, topic.probe_question)
-        label = classify(session, aid, topic.probe_question, ans.answer, topic.label, topic.keywords or [topic.label], topic.details)
+        label = classify(session, aid, topic.probe_question, ans.answer, topic.label, topic.keywords or [topic.label], topic.details, topic.require_all)
         ev = topic_evidence(session.db, aid, topic, before=before or session.now)
         strong = [e for e in ev if e["strong"]]
         claimed = label["claims_knowledge"]

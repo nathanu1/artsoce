@@ -149,6 +149,7 @@ class InterviewSession:
                 "question": question,
                 "_question": question,
                 "_statements": [m.description for m in mems],
+                "_identity": ident.model_dump(),
             },
             agent_id=agent_id,
             sim_time=self.now,

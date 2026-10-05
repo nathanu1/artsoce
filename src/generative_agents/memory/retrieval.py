@@ -120,15 +120,16 @@ class RetrievalResult:
         ca, cb = a.components(self.weights, self.mode), b.components(self.weights, self.mode)
         diffs = {k: ca[k] - cb[k] for k in ca}
         total = a.score - b.score
-        lead = max(diffs, key=lambda k: diffs[k])
-        drag = min(diffs, key=lambda k: diffs[k])
         if math.isclose(total, 0.0, abs_tol=1e-12):
             verdict = "Tied on score; the deterministic tie-break decided the order."
         else:
             first, second = (a, b) if total > 0 else (b, a)
-            verdict = (
-                f"{first.memory.id} outranks {second.memory.id} by {abs(total):.3f}. "
-                f"Largest push from {lead if total > 0 else drag} ({diffs[lead if total > 0 else drag]:+.3f})."
+            sign = 1 if total > 0 else -1
+            gains = {k: sign * v for k, v in diffs.items()}  # winner minus loser, per component
+            lead = max(gains, key=lambda k: gains[k])
+            behind = [k for k, v in gains.items() if v < 0]
+            verdict = f"{first.memory.id} outranks {second.memory.id} by {abs(total):.3f}, mostly on {lead} (+{gains[lead]:.3f})" + (
+                f" despite trailing on {', '.join(behind)}." if behind else "."
             )
         return {
             "a": {"id": a.memory.id, "rank": a.rank, "score": a.score, "components": ca},

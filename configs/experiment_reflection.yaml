@@ -1,0 +1,15 @@
+# Reflection extension (prompt §10), LIVE: full architecture vs reflection disabled
+# throughout, five independent two-day runs per condition, matched initial seeds.
+# Plans and estimates only; nothing runs without --execute --yes.
+#   ga experiment --protocol configs/experiment_reflection.yaml --measured-run runs/<pilot>
+name: reflection_live_pilot
+base_config: configs/live_pilot.yaml
+question: "With memory and planning on, how does reflection affect supported recall of seeded events and attendance among invited guests?"
+conditions:
+  full: ["architecture.reflection=true"]
+  no_reflection: ["architecture.reflection=false"]
+seeds: [101, 102, 103, 104, 105]
+primary_outcomes: [supported_party_recall, supported_candidacy_recall, invited_attendance_rate]
+evaluate_relationships: false
+min_minutes: 10
+output_dir: runs/experiments

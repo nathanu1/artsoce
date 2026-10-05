@@ -1,0 +1,110 @@
+# Every setting with its default value (generated from generative_agents.config.GAConfig).
+# The reproduction spec (docs/reproduction_spec.md §5) says where each value comes from:
+# P = paper, C = released code, E = engineering choice, X = experimental extension.
+# Other configs override only what they change; this file is documentation.
+run:
+  name: run
+  output_dir: runs
+  seed: 7
+  label: null
+scenario:
+  path: scenarios/pilot5/scenario.yaml
+  population: null
+  start: '2023-02-13T00:00:00'
+  end: '2023-02-15T00:00:00'
+  seconds_per_step: 10
+  candidacy_seed_policy: paper_originator_only
+  seed_rendering: verbatim
+architecture:
+  reflection: true
+  planning: true
+  fidelity: paper
+  post_conversation_inferences: null
+retrieval:
+  mode: paper
+  weights:
+    recency: 1.0
+    importance: 1.0
+    relevance: 1.0
+  decay_per_hour: 0.995
+  compat_decay: 0.995
+  equal_component_value: 0.5
+  budget_tokens: 1200
+  max_items: 30
+  tokens_per_char: 0.25
+importance:
+  idle_shortcut: true
+  batch_statements: true
+reflection:
+  mode: paper
+  threshold: 150.0
+  compat_trigger_max: 250.0
+  recent_records: 100
+  questions: 3
+  insights_per_question: 5
+  retrieval_items: 30
+  retry_cooldown_minutes: 30
+  max_repairs: 1
+summary:
+  refresh_every_minutes: 180
+  refresh_on_new_day: true
+  retrieval_items: 15
+planning:
+  day_chunks_min: 5
+  day_chunks_max: 8
+  task_min_minutes: 5
+  task_max_minutes: 15
+  jit_window_minutes: 60
+  max_repairs: 1
+  store_hourly_in_memory: true
+perception:
+  vision_r: null
+  att_bandwidth: null
+  retention: null
+location:
+  strategy: recursive
+  reuse_within_block: false
+dialogue:
+  max_utterances: 16
+  cooldown_minutes: 133
+  relationship_items: 25
+  turn_items: 10
+  no_chat_after_hour: 23
+constraints:
+  policy: strict-v1
+providers:
+  llm:
+    kind: mock
+    model: mock-llm-v1
+    max_output_tokens: 1024
+    effort: null
+    temperature: null
+    timeout_s: 120.0
+    max_retries: 2
+    max_validation_repairs: 1
+    refusal_fallback: 'off'
+    replay_from: null
+    task_overrides: {}
+  embeddings:
+    kind: mock-hash
+    model: mock-hash-256
+    dims: 256
+    revision: null
+    local_dir: null
+    cache_dir: .ga_cache
+budget:
+  max_calls: 5000
+  max_input_tokens: 5000000
+  max_output_tokens: 1000000
+  max_runtime_s: null
+  max_cost_usd: null
+  pricing_file: null
+output:
+  checkpoint_every_steps: 360
+  record_frames: true
+  snapshots:
+  - initial
+  - final
+interview:
+  retrieval_items: 30
+  max_output_tokens: 400

@@ -462,8 +462,59 @@ class MockLLM:
     def _t_interview(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         q = v.get("_question", "").lower()
         stmts: list[str] = v.get("_statements", [])
-        keys = [w for w in re.findall(r"[a-z]{4,}", q) if w not in {"what", "would", "your", "with", "will", "have", "there", "today", "doing"}]
-        hits = [s for s in stmts if any(k in s.lower() for k in keys)]
+        ident: dict[str, Any] = v.get("_identity") or {}
+        name = ident.get("name", "")
+
+        def mine(text: str) -> str:
+            t = re.sub(rf"\b{re.escape(name)}\b", "I", text) if name else text
+            t = re.sub(r"\bI is\b", "I am", t)
+            t = re.sub(
+                r"\bI (goes|loves|likes|opens|spends|works|lives|takes|eats|stands|has)\b",
+                lambda m: (
+                    "I "
+                    + {
+                        "goes": "go",
+                        "loves": "love",
+                        "likes": "like",
+                        "opens": "open",
+                        "spends": "spend",
+                        "works": "work",
+                        "lives": "live",
+                        "takes": "take",
+                        "eats": "eat",
+                        "stands": "stand",
+                        "has": "have",
+                    }[m.group(1)]
+                ),
+                t,
+            )
+            return t.strip()
+
+        # self-knowledge comes from the static identity that every condition shares
+        if ident and "introduction of yourself" in q:
+            return {"answer": f"Hi, I'm {name}, {ident.get('age')} years old. {mine(ident.get('learned', ''))}"}
+        if ident and "occupation" in q:
+            return {"answer": mine(ident.get("learned", "")).split(". ")[0] + "."}
+        if ident and "your interest" in q:
+            return {"answer": f"I'd describe myself as {ident.get('innate', '')}. {mine(ident.get('currently', '')).split('. ')[0]}."}
+        if ident and "weekday schedule" in q:
+            return {"answer": f"{mine(ident.get('lifestyle', ''))} {mine(ident.get('daily_plan_req') or '')}".strip()}
+        when = re.search(r"\b(\d{1,2})\s*(am|pm)\b", q)
+        if when:
+            hour = int(when.group(1)) % 12 + (12 if when.group(2) == "pm" else 0)
+            if "just finished" in q:
+                hour -= 1
+            for s_ in stmts:
+                m = re.search(r"plans to (.+?) from (\d{2}):\d{2} to (\d{2}|24):\d{2}", s_)
+                if m and int(m.group(2)) <= hour < int(m.group(3)):
+                    if "just finished" in q:
+                        return {"answer": f"By then I will have just finished this: {m.group(1)}."}
+                    return {"answer": f"I plan to {m.group(1)} around then, if my plan holds."}
+            return {"answer": "I don't have a plan for that time in mind."}
+        keys = [
+            w for w in re.findall(r"[a-z]{4,}", q) if w not in {"what", "would", "your", "with", "will", "have", "there", "today", "doing", "know", "about"}
+        ]
+        hits = [s_ for s_ in stmts if any(k in s_.lower() for k in keys)]
         if hits:
             return {"answer": "From what I remember, " + _first_person(hits[0])[0].lower() + _first_person(hits[0])[1:] + "."}
         if not stmts:
@@ -472,8 +523,16 @@ class MockLLM:
 
     def _t_awareness(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         ans = v.get("_answer", "").lower()
+        speaker = (v.get("_speaker") or "").lower()
+        if speaker:  # read first-person answers as statements about the speaker
+            ans = re.sub(r"\b(i am|i'm)\b", f"{speaker} is", ans)
         keys = [k.lower() for k in v.get("_topic_keywords", [])]
-        knows = any(k in ans for k in keys) and not any(n in ans for n in NEGATIONS)
+        required = v.get("_require_all") or []
+        if required:
+            knows = all(re.search(p, ans, re.I) for p in required)
+        else:
+            knows = any(k in ans for k in keys)
+        knows = knows and not any(n in ans for n in NEGATIONS)
         details = [d for d, pats in v.get("_detail_patterns", {}).items() if any(re.search(p, ans, re.I) for p in pats)] if knows else []
         return {"claims_knowledge": knows, "details": details, "quote": v.get("_answer", "")[:120] if knows else ""}
 

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smallville Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700&family=Silkscreen&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">Smallville Lab</span><span class="sub">Generative Agents reproduction</span></div>
+  <nav aria-label="Lab views" class="tabs">
+    <button data-tab="town" aria-current="page">Town</button>
+    <button data-tab="retrieval">Retrieval</button>
+    <button data-tab="reflections">Reflections</button>
+    <button data-tab="social">Social</button>
+    <button data-tab="interviews">Interviews</button>
+    <button data-tab="experiment">Experiment</button>
+  </nav>
+  <div class="clockbox">
+    <div class="clock"><span id="clock">--:--:--</span><span id="clockdate" class="clockdate">—</span></div>
+    <div class="controls" role="group" aria-label="Playback controls">
+      <button id="btn-back" title="Step back (←)" aria-label="Step back">◀︎</button>
+      <button id="btn-play" title="Play / pause (space)" aria-label="Play">▶︎</button>
+      <button id="btn-step" title="Step forward (→)" aria-label="Step forward">▶︎▮</button>
+      <select id="speed" aria-label="Playback speed">
+        <option value="6">1 min/s</option>
+        <option value="60" selected>10 min/s</option>
+        <option value="360">1 h/s</option>
+      </select>
+    </div>
+  </div>
+</header>
+<div class="strip" id="strip"></div>
+
+<main id="tab-town" class="tab town">
+  <section class="panel mapwrap" aria-labelledby="map-h">
+    <div class="panel-head">
+      <div><h2 id="map-h">the Ville</h2><span class="hint">Layout from the official map layers · simple shapes, no tile art · recorded frames only</span></div>
+      <div class="toggles" role="group" aria-label="Map layers">
+        <button class="toggle" data-layer="labels" aria-pressed="true">Labels</button>
+        <button class="toggle" data-layer="trails" aria-pressed="false">Trails</button>
+        <button class="toggle" data-layer="radius" aria-pressed="false">Perception</button>
+        <button class="toggle" data-layer="eval" aria-pressed="false">Evaluator overlay</button>
+      </div>
+    </div>
+    <div class="canvasbox"><canvas id="map" aria-label="Town map with agents"></canvas></div>
+    <input id="scrub" type="range" min="0" max="0" value="0" aria-label="Simulation step">
+  </section>
+  <section class="panel timeline" aria-labelledby="tl-h">
+    <div class="panel-head">
+      <div><h2 id="tl-h">Day timeline</h2><span class="hint" id="tl-day"></span></div>
+      <div class="legend">
+        <span><i class="sw planned"></i>Planned hour blocks</span>
+        <span><i class="sw past"></i>Past</span>
+        <span><i class="dot conv"></i>Conversation</span>
+        <span><i class="bar replan"></i>Replan</span>
+        <span><i class="dia refl"></i>Reflection</span>
+        <span><i class="dot cons"></i>Refused / failed</span>
+      </div>
+    </div>
+    <div id="lanes" class="lanes"></div>
+    <p class="note">Plans are the agent's intentions; the map shows what the engine executed. Click a lane to jump to that time.</p>
+  </section>
+  <aside class="panel inspector" aria-labelledby="insp-h">
+    <div class="panel-head"><h2 id="insp-h">Inspector</h2><span class="hint">researcher only · never shown to agents</span></div>
+    <div id="roster" class="roster" role="group" aria-label="Select agent"></div>
+    <div id="inspect"></div>
+  </aside>
+</main>
+
+<main id="tab-retrieval" class="tab single" hidden>
+  <section class="panel">
+    <div class="panel-head"><div><h2>Retrieval traces</h2><span class="hint">score = α·recency + α·importance + α·relevance, each min–max normalized over eligible memories; scored before access times change</span></div>
+      <select id="rt-agent" aria-label="Agent"></select></div>
+    <div class="split"><div id="rt-list" class="list"></div><div id="rt-detail"></div></div>
+  </section>
+</main>
+
+<main id="tab-reflections" class="tab single" hidden>
+  <section class="panel">
+    <div class="panel-head"><div><h2>Reflections and evidence</h2><span class="hint">every insight cites the statements it was inferred from; leaves are observations</span></div>
+      <select id="rf-agent" aria-label="Agent"></select></div>
+    <div class="split"><div id="rf-list" class="list"></div><div id="rf-tree"></div></div>
+  </section>
+</main>
+
+<main id="tab-social" class="tab single" hidden><section class="panel" id="social"></section></main>
+<main id="tab-interviews" class="tab single" hidden><section class="panel" id="interviews"></section></main>
+<main id="tab-experiment" class="tab single" hidden><section class="panel" id="experiment"></section></main>
+
+<dialog id="dlg"><form method="dialog"><button class="close" aria-label="Close">×</button></form><div id="dlg-body"></div></dialog>
+<footer class="foot">Simulated characters. Plausible behavior here does not establish validity for real people. The viewer replays recorded data and never calls a model.</footer>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# The same protocol with the offline MOCK model: exercises the runner, evaluation and report
+# end to end (about ten minutes). Its numbers say nothing about reflection.
+#   ga experiment --protocol configs/experiment_reflection_mock.yaml --execute
+name: reflection_mock
+base_config: configs/offline_pilot_2day.yaml
+question: "Pipeline check of the reflection extension with the offline fixture model."
+conditions:
+  full: ["architecture.reflection=true"]
+  no_reflection: ["architecture.reflection=false"]
+seeds: [101, 102, 103, 104, 105]
+primary_outcomes: [supported_party_recall, supported_candidacy_recall, invited_attendance_rate]
+evaluate_relationships: false
+min_minutes: 10
+output_dir: runs/experiments

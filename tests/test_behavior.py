@@ -234,3 +234,18 @@ def test_single_call_location_strategy_and_block_reuse(tmp_path):
     assert acts and all(a["choices"][0]["level"] in ("place", "reused") for a in acts)
     assert any(a["choices"][0]["level"] == "reused" for a in acts)
     assert len(sim.rt.ledger.rows(task="choose_location")) < len(acts)
+
+
+def test_inner_voice_intervention_is_stored_and_logged(tmp_path):
+    sim = make_sim(tmp_path, ["sam_moore"])
+    ready(sim, {"sam_moore": (76, 28)})
+    sim.schedule_intervention(
+        {"at": T9.isoformat(), "kind": "inner_voice", "agent": "sam_moore", "text": "You want to announce your candidacy at the town hall"}
+    )
+    sim.run(max_steps=2)
+    voice = memories(sim, "sam_moore", MemoryOrigin.INNER_VOICE.value)
+    assert [m["description"] for m in voice] == ["You want to announce your candidacy at the town hall"]
+    logged = sim.svc.events.query("intervention")
+    assert logged and logged[0]["kind"] == "inner_voice" and sim.db.get_meta("interventions_applied") == [0]
+    sim.run(max_steps=5)
+    assert len(memories(sim, "sam_moore", MemoryOrigin.INNER_VOICE.value)) == 1  # applied exactly once

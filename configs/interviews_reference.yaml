@@ -1,0 +1,12 @@
+# Matched-history interviews (paper §6, Appendix B) on the final snapshot of a two-day run.
+#   ga interview --run-dir runs/<run id> --protocol configs/interviews_reference.yaml
+# The snapshot is taken one simulated minute into 15 Feb (see the run configs), so "today"
+# has a plan. Each condition answers on its own clone; nothing is written back to the run.
+name: appendix_b
+snapshot: final
+bank: configs/questions/appendix_b_reference.yaml   # paper wording; use appendix_b_adapted.yaml for custom populations
+conditions: [full_architecture, no_reflection, observations_only, no_memory_stream]
+seed: 0              # placeholder sampling (memory questions 1 and 5); recorded in the manifest
+reference_time: null  # default: the snapshot's simulation time
+# The human crowdworker condition is never generated: import genuine answers with
+#   ga export-blinded --run-dir ... --name appendix_b --human-responses answers.csv
