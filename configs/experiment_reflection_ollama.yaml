@@ -1,0 +1,17 @@
+# Reflection extension (prompt §10) on a local model: full architecture vs reflection disabled
+# throughout, five independent two-day runs per condition of the three-agent pilot.
+# No API cost, but each run takes as long as your hardware needs; measure one run first:
+#   ga experiment --protocol configs/experiment_reflection_ollama.yaml --measured-run runs/ollama-pilot
+#   ga experiment --protocol configs/experiment_reflection_ollama.yaml --execute
+# With three agents, attendance among invited guests has at most two guests per run.
+name: reflection_ollama
+base_config: configs/ollama_pilot.yaml
+question: "With memory and planning on, how does reflection affect supported recall of seeded events and attendance among invited guests?"
+conditions:
+  full: ["architecture.reflection=true"]
+  no_reflection: ["architecture.reflection=false"]
+seeds: [101, 102, 103, 104, 105]
+primary_outcomes: [supported_party_recall, supported_candidacy_recall, invited_attendance_rate]
+evaluate_relationships: false
+min_minutes: 10
+output_dir: runs/experiments

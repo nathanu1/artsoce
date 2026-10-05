@@ -128,8 +128,11 @@ class ConstraintsSection(_Base):
     policy: Literal["strict-v1", "none"] = "strict-v1"
 
 
+LOCAL_KINDS = ("ollama", "openai_compatible")
+
+
 class LLMProviderSection(_Base):
-    kind: Literal["mock", "anthropic", "openai", "replay"] = "mock"
+    kind: Literal["mock", "anthropic", "openai", "ollama", "openai_compatible", "replay"] = "mock"
     model: str = "mock-llm-v1"
     max_output_tokens: int = 1024
     effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
@@ -139,16 +142,38 @@ class LLMProviderSection(_Base):
     max_validation_repairs: int = 1
     refusal_fallback: Literal["default", "off"] = "off"
     replay_from: str | None = None  # run dir to replay
+    # Per-task knobs: max_output_tokens, effort, temperature, and model (for example a smaller
+    # local model for importance ratings). A different model changes the request hash.
     task_overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    # Local servers (ollama, openai_compatible)
+    base_url: str | None = None  # default http://localhost:11434 (ollama) or http://localhost:1234/v1
+    num_ctx: int = 8192  # ollama context window; always sent so prompts are never silently cut
+    keep_alive: str | None = "30m"  # how long ollama keeps the model loaded between calls
+    think: bool | None = None  # ollama "think" flag for reasoning models; None leaves it unset
+    api_key_env: str | None = None  # openai_compatible: env var holding a key, if the server wants one
+    local: bool | None = None  # no API charges; None infers it (ollama, or a localhost base_url)
+
+    def is_local(self) -> bool:
+        if self.local is not None:
+            return self.local
+        if self.kind == "ollama":
+            return True
+        if self.kind == "openai_compatible":
+            from .providers.local_http import is_local_url
+
+            return is_local_url(self.base_url or "http://localhost:1234/v1")
+        return False
 
 
 class EmbeddingProviderSection(_Base):
-    kind: Literal["mock-hash", "openai", "sentence-transformers"] = "mock-hash"
+    kind: Literal["mock-hash", "openai", "sentence-transformers", "ollama", "openai_compatible"] = "mock-hash"
     model: str = "mock-hash-256"
     dims: int | None = 256
     revision: str | None = None
     local_dir: str | None = None
     cache_dir: str = ".ga_cache"
+    base_url: str | None = None  # ollama / openai_compatible servers
+    api_key_env: str | None = None
 
 
 class ProvidersSection(_Base):

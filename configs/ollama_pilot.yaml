@@ -1,0 +1,41 @@
+# Zero-cost research pilot: the paper's three-agent base (Isabella, Maria, Klaus), two
+# simulated days, an open-weight model on your own computer through Ollama. No API key and
+# no charges; calls are recorded at 0 USD with the model's digest.
+#
+#   ollama pull llama3.1:8b          # about 4.9 GB; 8 GB RAM minimum, 16 GB comfortable
+#   ollama pull nomic-embed-text     # about 0.3 GB, 768-dimensional embeddings
+#   ga doctor --config configs/ollama_pilot.yaml
+#   ga run --config configs/ollama_pilot.yaml --run-id ollama-pilot
+#
+# Other models work the same way: `mistral:7b` (4.4 GB) or `llama3:8b` (4.7 GB); set
+# providers.llm.model. A smaller model for the short rating tasks speeds things up, for
+# example task_overrides: {importance: {model: "llama3.2:3b"}} (pull it first).
+# Speed depends on your hardware and has not been measured from this project.
+run:
+  name: pilot3-ollama
+  label: "Ollama pilot (local model)"
+scenario:
+  path: scenarios/pilot3/scenario.yaml
+  start: "2023-02-13T00:00:00"
+  end: "2023-02-15T00:01:00"
+providers:
+  llm:
+    kind: ollama
+    model: llama3.1:8b
+    base_url: http://localhost:11434
+    num_ctx: 8192          # our longest prompts are about 2,500 tokens; 4096 also fits
+    max_output_tokens: 768
+    temperature: 0.7
+    keep_alive: 30m
+    timeout_s: 600
+    max_retries: 2
+  embeddings:
+    kind: ollama
+    model: nomic-embed-text
+    dims: 768
+    base_url: http://localhost:11434
+budget:
+  max_calls: 40000
+  max_input_tokens: null
+  max_output_tokens: null
+  max_runtime_s: null

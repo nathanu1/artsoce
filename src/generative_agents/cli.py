@@ -44,6 +44,13 @@ def _live_guard(cfg, yes: bool) -> bool:
     if cfg.run_mode != "live":
         return True
     b = cfg.budget
+    if cfg.providers.llm.is_local():
+        print(
+            f"Local model {cfg.providers.llm.kind}:{cfg.providers.llm.model} (no API charges); population "
+            f"{cfg.scenario.population or 'all agents in the scenario'}; {cfg.scenario.start} → {cfg.scenario.end}. "
+            f"Limits: calls {b.max_calls}, runtime {b.max_runtime_s} s."
+        )
+        return True
     print(
         f"Live run with {cfg.providers.llm.kind}:{cfg.providers.llm.model}; population {cfg.scenario.population or 'all agents in the scenario'}; "
         f"{cfg.scenario.start} → {cfg.scenario.end}.\n"
@@ -110,17 +117,31 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             f"openai:{llm.model}; SDK {'installed' if ok_sdk else 'missing'}; OPENAI_API_KEY {'set' if key else 'not set'}",
         )
     emb = cfg.providers.embeddings
+    if llm.kind == "ollama" or emb.kind == "ollama":
+        _doctor_ollama(cfg, add)
+    if llm.kind == "openai_compatible":
+        add("language model", "ok", f"openai_compatible:{llm.model} at {llm.base_url or 'http://localhost:1234/v1'} (not probed; start the server first)")
     if emb.kind == "mock-hash":
         add("embeddings", "warn", "mock-hash fixture: lexical hashing, never semantic retrieval results")
     elif emb.kind == "openai":
         add("embeddings", "ok" if os.environ.get("OPENAI_API_KEY") and _importable("openai") else "fail", f"openai:{emb.model}")
+    elif emb.kind == "ollama":
+        pass  # checked with the server above
+    elif emb.kind == "openai_compatible":
+        add(
+            "embeddings",
+            "ok" if emb.dims else "warn",
+            f"openai_compatible:{emb.model} ({'dims ' + str(emb.dims) if emb.dims else 'set dims so replays can rebuild the cache key'})",
+        )
     else:
         add(
             "embeddings",
             "ok" if _importable("sentence_transformers") else "fail",
             f"sentence-transformers:{emb.model} ({emb.local_dir or 'download on first use'})",
         )
-    if cfg.budget.pricing_file:
+    if llm.is_local():
+        add("pricing", "ok", "local model: no API charges (calls are recorded at 0 USD)")
+    elif cfg.budget.pricing_file:
         try:
             pt = PriceTable.load(repo_path(cfg.budget.pricing_file))
             known = llm.model in pt.models
@@ -147,6 +168,27 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     free = shutil.disk_usage(repo_path(".")).free / 1e9
     add("disk", "ok" if free > 2 else "warn", f"{free:.1f} GB free (the offline 25-agent two-day run used about 0.5 GB with snapshots)")
     return _report(checks)
+
+
+def _doctor_ollama(cfg, add) -> None:
+    from .providers.ollama_provider import ollama_status
+
+    llm, emb = cfg.providers.llm, cfg.providers.embeddings
+    wanted = [m for m, used in ((llm.model, llm.kind == "ollama"), (emb.model, emb.kind == "ollama")) if used]
+    wanted += [o["model"] for o in llm.task_overrides.values() if llm.kind == "ollama" and o.get("model")]
+    base = llm.base_url if llm.kind == "ollama" else emb.base_url
+    st = ollama_status(base, list(dict.fromkeys(wanted)))
+    if not st["reachable"]:
+        add("ollama", "fail", f"not reachable at {st['base_url']}: start it with `ollama serve` (or open the Ollama app)")
+        return
+    add("ollama", "ok", f"server {st['version']} at {st['base_url']}")
+    for model, info in st["present"].items():
+        if info:
+            add(f"model {model}", "ok", f"pulled; digest {str(info['digest'])[:19]}, {info['size'] / 1e9:.1f} GB" if info.get("size") else "pulled")
+        else:
+            add(f"model {model}", "fail", f"not pulled: run `ollama pull {model}`")
+    if llm.kind == "ollama":
+        add("context window", "ok", f"num_ctx {llm.num_ctx} (prompts here reach about 2,500 tokens; 4096 is the practical minimum)")
 
 
 def _importable(mod: str) -> bool:
@@ -439,7 +481,8 @@ def cmd_experiment(args: argparse.Namespace) -> int:
     if not args.execute:
         print("Planned only. Add --execute to run the batch (live protocols spend real API calls).")
         return 0
-    if est["mode"] == "live" and not args.yes:
+    local = proto.config_for(proto.runs()[0]).providers.llm.is_local()
+    if est["mode"] == "live" and not args.yes and not local:
         print("This protocol is live. Add --yes as well to confirm.")
         return 2
     res = execute(proto, progress=lambda r: print(f"  {r['run_id']}: {r.get('status')} {r.get('stop_detail') or ''}", flush=True))

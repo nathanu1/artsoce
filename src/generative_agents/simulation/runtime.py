@@ -30,6 +30,16 @@ def build_llm_provider(cfg: GAConfig) -> Any:
         from ..providers.openai_provider import OpenAIProvider
 
         return OpenAIProvider(llm.model, timeout_s=llm.timeout_s, max_retries=llm.max_retries, seed=cfg.run.seed)
+    if llm.kind == "ollama":
+        from ..providers.ollama_provider import OllamaProvider
+
+        return OllamaProvider(
+            llm.model, base_url=llm.base_url, num_ctx=llm.num_ctx, keep_alive=llm.keep_alive, seed=cfg.run.seed, think=llm.think, timeout_s=llm.timeout_s
+        )
+    if llm.kind == "openai_compatible":
+        from ..providers.openai_compatible import OpenAICompatibleProvider
+
+        return OpenAICompatibleProvider(llm.model, base_url=llm.base_url, api_key_env=llm.api_key_env, seed=cfg.run.seed, timeout_s=llm.timeout_s)
     if llm.kind == "replay":
         return _NoCallProvider()
     raise ValueError(f"unknown llm provider {llm.kind!r}")
@@ -91,6 +101,7 @@ def build_runtime(
         max_validation_repairs=llm.max_validation_repairs,
         backoff_s=0.0 if llm.kind == "mock" else 2.0,
         task_overrides=llm.task_overrides,
+        zero_cost=llm.is_local(),
     )
     kwargs: dict[str, Any] = {}
     if sleep is not None:

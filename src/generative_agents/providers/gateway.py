@@ -70,6 +70,7 @@ class GatewaySettings:
     max_validation_repairs: int = 1
     backoff_s: float = 2.0
     task_overrides: dict[str, dict[str, Any]] | None = None
+    zero_cost: bool = False  # a model on your own machine: every call costs 0 USD
 
 
 class LLMGateway:
@@ -123,7 +124,7 @@ class LLMGateway:
                 system=system,
                 prompt=attempt_prompt,
                 output_schema=schema,
-                model=self.settings.model,
+                model=knobs["model"],
                 max_output_tokens=knobs["max_output_tokens"],
                 effort=knobs["effort"],
                 temperature=knobs["temperature"],
@@ -155,13 +156,14 @@ class LLMGateway:
             "max_output_tokens": template.max_output_tokens,
             "effort": template.effort,
             "temperature": self.settings.temperature,
+            "model": self.settings.model,
         }
         if self.settings.max_output_tokens is not None:
             knobs["max_output_tokens"] = max(knobs["max_output_tokens"], self.settings.max_output_tokens)
         if self.settings.effort is not None:
             knobs["effort"] = self.settings.effort
         override = (self.settings.task_overrides or {}).get(template.id, {})
-        for key in ("max_output_tokens", "effort", "temperature"):
+        for key in ("max_output_tokens", "effort", "temperature", "model"):
             if key in override:
                 knobs[key] = override[key]
         return knobs
@@ -240,12 +242,16 @@ class LLMGateway:
             "temperature": request.temperature,
         }
         if response is not None:
-            cost = self.pricing.cost(
-                response.served_model or request.model,
-                response.input_tokens,
-                response.output_tokens,
-                response.cache_read_tokens,
-                response.cache_write_tokens,
+            cost = (
+                0.0
+                if self.settings.zero_cost
+                else self.pricing.cost(
+                    response.served_model or request.model,
+                    response.input_tokens,
+                    response.output_tokens,
+                    response.cache_read_tokens,
+                    response.cache_write_tokens,
+                )
             )
             self.budget.record(response.input_tokens, response.output_tokens, cost)
             status = "received"

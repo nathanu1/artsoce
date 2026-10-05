@@ -5,6 +5,8 @@
   its retrieval results are never presented as semantic research results (spec §2).
 * ``OpenAIEmbedding`` — API embeddings; model and dimensions recorded.
 * ``SentenceTransformerEmbedding`` — local pretrained model from a directory or the hub cache.
+* ``OllamaEmbedding`` / ``OpenAICompatibleEmbedding`` — local servers (``providers/ollama_provider.py``,
+  ``providers/openai_compatible.py``).
 
 Pure embedding results may be cached across runs when model, revision, dimensions and text
 all match (spec O-2).
@@ -113,6 +115,10 @@ class OpenAIEmbedding:
         self._requested_dims = dims
         self.revision = None
 
+    def prepare(self) -> None:
+        if not self.dims:
+            self.embed(["dimension probe"])
+
     def embed(self, texts: list[str]) -> np.ndarray:
         import openai
 
@@ -195,6 +201,10 @@ class EmbeddingService:
 
     @property
     def model_key(self) -> str:
+        # The key includes the dimensions, so a provider that only learns them from its first
+        # reply must learn them before any vector is stored or looked up.
+        if not self.provider.dims and hasattr(self.provider, "prepare"):
+            self.provider.prepare()
         return f"{self.provider.model_id}@{self.provider.revision or 'none'}:{self.provider.dims}"
 
     @property
@@ -249,4 +259,12 @@ def build_embedding_provider(cfg: Any) -> Any:
         return OpenAIEmbedding(cfg.model, cfg.dims)
     if cfg.kind == "sentence-transformers":
         return SentenceTransformerEmbedding(cfg.model, cfg.local_dir, cfg.revision)
+    if cfg.kind == "ollama":
+        from .ollama_provider import OllamaEmbedding
+
+        return OllamaEmbedding(cfg.model, cfg.dims, base_url=cfg.base_url, revision=cfg.revision)
+    if cfg.kind == "openai_compatible":
+        from .openai_compatible import OpenAICompatibleEmbedding
+
+        return OpenAICompatibleEmbedding(cfg.model, cfg.dims, base_url=cfg.base_url, api_key_env=cfg.api_key_env, revision=cfg.revision)
     raise ValueError(f"unknown embedding provider {cfg.kind!r}")
