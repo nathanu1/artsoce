@@ -224,3 +224,13 @@ def test_conversation_duration_rule():
     u = [Utterance(speaker_id="a", text="x" * 240, sim_time=T9), Utterance(speaker_id="b", text="y" * 241, sim_time=T9)]
     assert conversation_minutes(u) == 2  # ceil(int(481 / 8) / 30) = ceil(60 / 30)
     assert conversation_minutes(u[:1]) == 1
+
+
+def test_single_call_location_strategy_and_block_reuse(tmp_path):
+    sim = make_sim(tmp_path, ["klaus_mueller"], extra=("location.strategy=single_call", "location.reuse_within_block=true"))
+    ready(sim, {"klaus_mueller": (118, 45)})
+    sim.run(max_steps=200)
+    acts = sim.svc.events.query("action", agent_id="klaus_mueller")
+    assert acts and all(a["choices"][0]["level"] in ("place", "reused") for a in acts)
+    assert any(a["choices"][0]["level"] == "reused" for a in acts)
+    assert len(sim.rt.ledger.rows(task="choose_location")) < len(acts)

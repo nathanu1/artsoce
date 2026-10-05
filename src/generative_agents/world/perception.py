@@ -198,5 +198,5 @@ class Perceiver:
         if spatial is not None:
             for e in res.percepts:
                 if e.kind == "object" and e.address:
-                    spatial.saw_state(e.address, e.state or IDLE, now)
+                    spatial.saw_state(e.address, e.state or IDLE, now, lasting=world_state.get(e.address).lasting)
         return res

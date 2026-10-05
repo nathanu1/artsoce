@@ -76,17 +76,28 @@ class SpatialMemory:
         self.dirty = self.dirty or changed
         return changed
 
-    def saw_state(self, address: str, state: str, when: datetime) -> None:
-        """Record the state the agent sees; ``at`` is when it first saw the object in that state."""
+    def saw_state(self, address: str, state: str, when: datetime, lasting: str | None = None) -> None:
+        """Record the state the agent sees; ``at`` is when it first saw the object in that state.
+
+        ``lasting`` is the object's lasting condition at that moment. It is kept for the
+        evaluator (stale-knowledge measurement) and never shown to the agent.
+        """
 
         prev = self.seen_states.get(address)
-        if prev is None or prev.get("state") != state:
-            self.seen_states[address] = {"state": state, "at": when.isoformat()}
+        if prev is None or prev.get("state") != state or prev.get("lasting") != lasting:
+            rec = {"state": state, "at": when.isoformat()}
+            if lasting is not None:
+                rec["lasting"] = lasting
+            self.seen_states[address] = rec
             self.dirty = True
 
     def believed_state(self, address: str) -> str | None:
         rec = self.seen_states.get(address)
         return rec["state"] if rec else None
+
+    def seen_lasting(self, address: str) -> str | None:
+        rec = self.seen_states.get(address)
+        return rec.get("lasting") if rec else None
 
     def to_json(self) -> str:
         return json.dumps({"tree": self.tree, "seen_states": self.seen_states}, sort_keys=True)

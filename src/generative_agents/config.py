@@ -168,6 +168,9 @@ class BudgetSection(_Base):
 class OutputSection(_Base):
     checkpoint_every_steps: int = 360
     record_frames: bool = True
+    # Frozen copies of the committed state for interviews and probes: "initial" (after
+    # seeding), "final" (when the run completes) and any ISO times reached during the run.
+    snapshots: list[str] = Field(default_factory=lambda: ["initial", "final"])
 
 
 class InterviewSection(_Base):

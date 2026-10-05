@@ -1,0 +1,35 @@
+# The 25 interview questions of Park et al. (2023), Appendix B (pp. 21-22), with the paper's
+# wording and pronouns kept. Square-bracket names in the paper are placeholders:
+#   memory questions 1 and 5: agents the subject has interacted with, sampled at random;
+#   reflection questions 2-4: the agent the subject interacted with most often.
+# "Kane Martinez" is the paper's name for a person who does not exist in Smallville.
+name: appendix_b_reference
+version: 1
+source: "Park et al. 2023, Appendix B, pp. 21-22"
+pronouns: "kept as in the paper ('she') for reflection questions 2-4"
+questions:
+  - {id: self_1, category: self_knowledge, text: "Give an introduction of yourself."}
+  - {id: self_2, category: self_knowledge, text: "What's your occupation?"}
+  - {id: self_3, category: self_knowledge, text: "What is your interest?"}
+  - {id: self_4, category: self_knowledge, text: "Who do you live with?"}
+  - {id: self_5, category: self_knowledge, text: "Describe your typical weekday schedule in broad strokes."}
+  - {id: memory_1, category: memory, text: "Who is {interacted_1}?", paper_text: "Who is [Wolfgang Schulz]?"}
+  - {id: memory_2, category: memory, text: "Who is {nonexistent_person}?", paper_text: "Who is Kane Martinez?"}
+  - {id: memory_3, category: memory, text: "Who is running for the election?"}
+  - {id: memory_4, category: memory, text: "Was there a Valentine's day party?"}
+  - {id: memory_5, category: memory, text: "Who is {interacted_2}?", paper_text: "Who is [Ayesha Khan]?"}
+  - {id: plans_1, category: plans, text: "What will you be doing at 6am today?"}
+  - {id: plans_2, category: plans, text: "What will you be doing at 6pm today?"}
+  - {id: plans_3, category: plans, text: "What will you have just finished doing at 1pm today?"}
+  - {id: plans_4, category: plans, text: "What will you have just finished doing at 12pm today?"}
+  - {id: plans_5, category: plans, text: "What will you be doing at 10pm today?"}
+  - {id: reactions_1, category: reactions, text: "Your breakfast is burning! What would you do?"}
+  - {id: reactions_2, category: reactions, text: "The bathroom is occupied. What would you do?"}
+  - {id: reactions_3, category: reactions, text: "You need to cook dinner but your refrigerator is empty. What would you do?"}
+  - {id: reactions_4, category: reactions, text: "You see your friend walking by the street. What would you do or say to your friend?"}
+  - {id: reactions_5, category: reactions, text: "You see fire on the street. What would you do?"}
+  - {id: reflections_1, category: reflections, text: "What inspires you in life the most right now, and why?"}
+  - {id: reflections_2, category: reflections, text: "If you had to guess given what you know about {frequent_1}, what book do you think she will like and why?", paper_text: "If you had to guess given what you know about [Ayesha Khan], what book do you think she will like and why?"}
+  - {id: reflections_3, category: reflections, text: "If you had to get something {frequent_1} likes for her birthday, what would you get her?", paper_text: "If you had to get something [Ayesha Khan] likes for her birthday, what would you get her?"}
+  - {id: reflections_4, category: reflections, text: "What would you say to {frequent_1} to compliment her?", paper_text: "What would you say to [Ayesha Khan] to compliment her?"}
+  - {id: reflections_5, category: reflections, text: "If you could spend time with someone you talked to recently, who would it be and why?"}

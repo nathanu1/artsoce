@@ -36,7 +36,7 @@ import yaml
 
 from .. import __version__
 from ..cognition.dialogue import DialogueEngine, Side
-from ..cognition.location import LocationChooser
+from ..cognition.location import LocationChooser, LocationResult
 from ..cognition.planning import Planner, PlanStore, is_sleep
 from ..cognition.reaction import ReactionEngine, focal_percept
 from ..cognition.reflection import ReflectionEngine
@@ -252,6 +252,8 @@ class Simulation:
             self.db.set_meta("scenario", sc.manifest())
             self.db.set_meta("status", RunStatus.CREATED.value)
             self._checkpoint(note="initialized")
+            if "initial" in self.cfg.output.snapshots:
+                self.snapshot("initial")
         except (BudgetExceeded, ProviderError, ReplayMiss) as exc:
             self.db.rollback()
             self._invalidate()
@@ -316,7 +318,13 @@ class Simulation:
             self.rt.ledger.reset_counts(self.clock.step - 1)
             self.db.set_meta("status", RunStatus.RUNNING.value)
             self.db.commit()
+            timed = self._timed_snapshots()
             while self.clock.now < end and (max_steps is None or steps < max_steps):
+                due = [name for name, t in timed if t <= self.clock.now and name not in self.snapshots()]
+                if due:
+                    self._checkpoint(note="snapshot")
+                    for name in due:
+                        self.snapshot(name)
                 self.step()
                 steps += 1
                 if self.clock.step % self.cfg.output.checkpoint_every_steps == 0:
@@ -325,6 +333,8 @@ class Simulation:
                     progress(self.clock.step, self.clock.now)
             status = RunStatus.COMPLETED if self.clock.now >= self.cfg.scenario.end else RunStatus.INTERRUPTED
             self._checkpoint(note="stopped")
+            if status == RunStatus.COMPLETED and "final" in self.cfg.output.snapshots:
+                self.snapshot("final")
         except RunStopped as stop:
             status = stop.status
             self._abort(stop.status, stop.detail)
@@ -335,6 +345,36 @@ class Simulation:
         self.db.commit()
         self.write_manifest()
         return status.value
+
+    # ================================================================== snapshots
+    def _timed_snapshots(self) -> list[tuple[str, datetime]]:
+        out = []
+        for item in self.cfg.output.snapshots:
+            if item in ("initial", "final"):
+                continue
+            out.append((item.replace(":", "-"), datetime.fromisoformat(item)))
+        return out
+
+    def snapshots(self) -> dict[str, Any]:
+        return dict(self.db.get_meta("snapshots", {}) or {})
+
+    def snapshot(self, name: str) -> Path:
+        """Copy the committed state to ``snapshots/<name>.sqlite`` (call right after a checkpoint)."""
+
+        folder = self.run_dir / "snapshots"
+        folder.mkdir(exist_ok=True)
+        path = folder / f"{name}.sqlite"
+        if path.exists():
+            path.unlink()
+        snaps = self.snapshots()
+        snaps[name] = {"path": str(path.relative_to(self.run_dir)), "step": self.clock.step, "sim_time": iso(self.clock.now)}
+        self.db.set_meta("snapshots", snaps)
+        self.db.commit()
+        copy = self.db.clone(path)
+        copy.set_meta("snapshot", {"name": name, "run_id": self.run_id, **snaps[name]})
+        copy.commit()
+        copy.close()
+        return path
 
     def check_scenario_unchanged(self) -> None:
         recorded = self.db.get_meta("scenario")
@@ -669,7 +709,13 @@ class Simulation:
             def check(address: str) -> Verdict:
                 return self.constraints.check(ident, address, now, occupancy, current_arena=self.world.arena_at(*here)) if self.constraints.active else ALLOW
 
-            loc = self.locations.choose(ident, task.description, now, (s, a), self.spatial.get(ident.id), check=check)
+            reuse = st.extra.get("last_location") if self.cfg.location.reuse_within_block else None
+            if reuse and reuse.get("block") == task.parent_id and reuse.get("address") and check(":".join(reuse["address"].split(":")[:3])).allowed:
+                loc = LocationResult(reuse["address"], choices=[{"level": "reused", "choice": reuse["address"], "asked": False}])
+            else:
+                loc = self.locations.choose(ident, task.description, now, (s, a), self.spatial.get(ident.id), check=check)
+            if loc.address and not loc.failure and loc.verdict.allowed:
+                st.extra["last_location"] = {"block": task.parent_id, "address": loc.address}
             if loc.verdict.rule == "occupied":
                 wait = self.planner.insert(
                     ident,
@@ -714,6 +760,10 @@ class Simulation:
                 path_len=len(act.path),
                 triple=[act.subject, act.predicate, act.object],
                 object_state=act.object_state,
+                believed_state=self.spatial.get(ident.id).believed_state(loc.address) if loc.address.count(":") == 3 else None,
+                seen_lasting=self.spatial.get(ident.id).seen_lasting(loc.address) if loc.address.count(":") == 3 else None,
+                actual_lasting=self.world_state.get(loc.address).lasting if loc.address.count(":") == 3 else None,
+                lasting_state=act.lasting_state,
             )
         st.action = act
         self.planner.mark_active(task)

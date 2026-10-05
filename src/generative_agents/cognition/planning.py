@@ -389,9 +389,10 @@ class Planner:
     def window_of(self, block: PlanItem, t: datetime) -> tuple[datetime, datetime]:
         if is_sleep(block.description):
             return block.start, block.end
-        k = int((t - block.start).total_seconds() // 3600)
-        ws = block.start + timedelta(hours=k)
-        return ws, min(ws + timedelta(hours=1), block.end)
+        span = max(self.cfg.task_max_minutes, self.cfg.jit_window_minutes) * 60
+        k = int((t - block.start).total_seconds() // span)
+        ws = block.start + timedelta(seconds=k * span)
+        return ws, min(ws + timedelta(seconds=span), block.end)
 
     def current_task(self, identity: AgentIdentity, now: datetime) -> PlanItem | None:
         task = self.plans.at(identity.id, PlanLevel.TASK, now)

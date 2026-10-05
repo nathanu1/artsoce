@@ -126,6 +126,8 @@ class LocationChooser:
         check: Callable[[str], Verdict] | None = None,
         exclude: set[str] | None = None,
     ) -> LocationResult:
+        if self.svc.cfg.location.strategy == "single_call":
+            return self.choose_single(identity, activity, now, here, spatial, check, exclude)
         res = LocationResult(None)
         excluded = set(exclude or ())
         w = self.world.world
@@ -173,3 +175,53 @@ class LocationChooser:
     def feedback(self, identity: AgentIdentity, verdict: Verdict, now: datetime) -> None:
         self.svc.remember(identity, verdict.message, MemoryKind.OBSERVATION, MemoryOrigin.SYSTEM_FEEDBACK, now, metadata={"rule": verdict.rule})
         self.svc.events.log("constraint", now, identity.id, rule=verdict.rule, message=verdict.message)
+
+    def choose_single(
+        self,
+        identity: AgentIdentity,
+        activity: str,
+        now: datetime,
+        here: tuple[str, str],
+        spatial: SpatialMemory,
+        check: Callable[[str], Verdict] | None = None,
+        exclude: set[str] | None = None,
+    ) -> LocationResult:
+        """Engineering alternative (``location.strategy: single_call``): one prompt listing every
+        known destination as "area: room: object" instead of three nested prompts."""
+
+        res = LocationResult(None)
+        excluded = set(exclude or ())
+        w = self.world.world
+        for _attempt in range(self.max_rechoices + 1):
+            paths: dict[str, str] = {}
+            for sector in self._options(spatial, [], excluded):
+                for arena in self._options(spatial, [sector], excluded):
+                    objs = self._options(spatial, [sector, arena], excluded)
+                    for obj in objs or [""]:
+                        label = ": ".join(x for x in (sector, arena, obj) if x)
+                        paths[label] = ":".join(x for x in (w, sector, arena, obj) if x)
+            if not paths:
+                res.failure = "no known destination"
+                return res
+            options = sorted(paths)
+            try:
+                pick, call_ids = self._ask(identity, now, activity, ("place", "place (area: room: object)", "places"), options, here, spatial, [])
+            except TaskFailed as exc:
+                res.call_ids += exc.call_ids
+                res.failure = f"place choice failed: {exc}"
+                return res
+            res.call_ids += call_ids
+            res.choices.append({"level": "place", "choice": pick, "options": len(options), "asked": True})
+            address = paths[pick]
+            verdict = check(":".join(address.split(":")[:3])) if check is not None else ALLOW
+            if verdict.allowed:
+                res.address = address
+                return res
+            res.rejections.append({"address": address, "rule": verdict.rule, "message": verdict.message})
+            self.feedback(identity, verdict, now)
+            if verdict.rule == "occupied":
+                res.verdict, res.address = verdict, ":".join(address.split(":")[:3])
+                return res
+            excluded.add(":".join(address.split(":")[:3]) if verdict.rule == "private" else ":".join(address.split(":")[:2]))
+        res.failure = "every choice was refused by the world"
+        return res

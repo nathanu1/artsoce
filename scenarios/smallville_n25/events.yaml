@@ -26,7 +26,7 @@ events:
     originator: sam_moore
     probe_question: "Do you know who is running for mayor?"           # paper §7.1.1 p. 15
     topic: "Sam Moore running for mayor"
-    topic_keywords: ["sam"]
+    topic_keywords: ["sam", "mayor", "election"]  # classifier hint only; evidence uses require_all
     require_all: ["sam", "(mayor|running|run|election|candida)"]
     details:
       candidate: ["sam( moore)?"]
