@@ -182,10 +182,7 @@ class CallLedger:
             )
         }
         out["by_task"] = by_task
-        served = [
-            r["served_model"]
-            for r in self.conn.execute("SELECT DISTINCT served_model FROM calls WHERE scope=? AND served_model IS NOT NULL", (scope,))
-        ]
+        served = [r["served_model"] for r in self.conn.execute("SELECT DISTINCT served_model FROM calls WHERE scope=? AND served_model IS NOT NULL", (scope,))]
         out["served_models"] = served
         return out
 

@@ -240,7 +240,11 @@ class GAConfig(_Base):
             ("clock.seconds_per_step", self.scenario.seconds_per_step, "C" if self.scenario.seconds_per_step == 10 else "E"),
             ("constraints.policy", self.constraints.policy, "E"),
             ("scenario.seed_rendering", self.scenario.seed_rendering, "P" if self.scenario.seed_rendering == "verbatim" else "C"),
-            ("scenario.candidacy_seed_policy", self.scenario.candidacy_seed_policy, "P" if self.scenario.candidacy_seed_policy == "paper_originator_only" else "C"),
+            (
+                "scenario.candidacy_seed_policy",
+                self.scenario.candidacy_seed_policy,
+                "P" if self.scenario.candidacy_seed_policy == "paper_originator_only" else "C",
+            ),
         ]
         return [{"setting": k, "value": v, "class": c} for k, v, c in rows]
 

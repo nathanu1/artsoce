@@ -1,0 +1,33 @@
+# EVALUATOR-ONLY ground truth (spec A-7). Nothing in this file is ever rendered into an agent
+# prompt, shared calendar or global goal. Agents know only what their own seeds and identity say.
+events:
+  valentines_party:
+    label: "Valentine's Day party at Hobbs Cafe"
+    originator: isabella_rodriguez
+    place: "the Ville:Hobbs Cafe"
+    window:
+      start: "2023-02-14T17:00:00"
+      end: "2023-02-14T19:00:00"
+    provenance:
+      start: "agent_history_init_n25.csv, Isabella: 'February 14th from 5pm'"
+      end: "paper p. 7 ('from 5 to 7 p.m. on February 14th'); Isabella's own scratch.json 'currently' field ('from 5pm to 7pm')"
+    probe_question: "Did you know there is a Valentine's Day party?"   # paper §7.1.1 p. 15
+    topic: "a Valentine's Day party"
+    topic_keywords: ["valentine", "party"]
+    # Which details a statement or answer conveys (regexes, case-insensitive)
+    details:
+      date: ["february 14", "feb\\.? 14", "14th", "valentine'?s day"]
+      time: ["\\b5 ?(pm|p\\.m\\.)", "\\b5:00", "17:00", "five o'clock", "from 5", "at 5"]
+      place: ["hobbs cafe", "the cafe"]
+    invitation_patterns: ["\\bcome\\b", "\\bjoin\\b", "invit", "welcome to", "you should (come|be there)"]
+    acceptance_patterns: ["(i'?d|i would|i will|i'?ll) (love to |be happy to |definitely )?(come|be there|join|attend)", "count me in", "see you there", "i'?ll be there"]
+  mayor_candidacy:
+    label: "Sam Moore is running for mayor"
+    originator: sam_moore
+    probe_question: "Do you know who is running for mayor?"           # paper §7.1.1 p. 15
+    topic: "Sam Moore running for mayor"
+    topic_keywords: ["sam"]
+    require_all: ["sam", "(mayor|running|run|election|candida)"]
+    details:
+      candidate: ["sam( moore)?"]
+      office: ["mayor"]

@@ -223,9 +223,7 @@ class Database:
 
         h = hashlib.sha256()
         names = tables or tuple(
-            r["name"]
-            for r in self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-            if not r["name"].startswith("sqlite_")
+            r["name"] for r in self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name") if not r["name"].startswith("sqlite_")
         )
         for name in names:
             h.update(name.encode())

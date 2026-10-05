@@ -44,12 +44,19 @@ class Env:
         self.store = MemoryStore(self.db)
         self.embedder = EmbeddingService(embedder or MockHashEmbedding(64), store=self.store)
 
-    def add(self, owner, text, *, created=T0, importance=3, kind=MemoryKind.OBSERVATION,
-            origin=MemoryOrigin.DIRECT_OBSERVATION, accessed=None, **fields):
+    def add(self, owner, text, *, created=T0, importance=3, kind=MemoryKind.OBSERVATION, origin=MemoryOrigin.DIRECT_OBSERVATION, accessed=None, **fields):
         vec = self.embedder.embed_one(text)
-        mem = self.store.add(owner_id=owner, kind=kind, origin=origin, description=text,
-                             created_at=created, importance=importance,
-                             embedding_model=self.embedder.model_key, vector=vec, **fields)
+        mem = self.store.add(
+            owner_id=owner,
+            kind=kind,
+            origin=origin,
+            description=text,
+            created_at=created,
+            importance=importance,
+            embedding_model=self.embedder.model_key,
+            vector=vec,
+            **fields,
+        )
         if accessed is not None:
             self.store.touch([mem.id], accessed)
             mem.last_accessed_at = accessed

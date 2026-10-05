@@ -1,0 +1,20 @@
+name: pilot5
+description: >-
+  Documented subset of the 25-agent Smallville scenario for pilot runs: the official starter trio
+  (Isabella Rodriguez, Maria Lopez, Klaus Mueller) plus Sam Moore (candidacy originator) and
+  Wolfgang Schulz (frequents Hobbs Cafe; dormmate of Maria and Klaus). All five use the n25
+  persona files and n25 history statements. Seeds that mention agents absent from the pilot are
+  kept verbatim; those people simply do not exist in this world.
+source:
+  repo: joonspk-research/generative_agents
+  commit: fe05a71d3e4ed7d10bf68aa4eda6dd995ec070f4
+  base: environment/frontend_server/storage/base_the_ville_n25
+  history: environment/frontend_server/static_dirs/assets/the_ville/agent_history_init_n25.csv
+start: "2023-02-13T00:00:00"
+seconds_per_step: 10
+map: ../smallville_n25/map/the_ville.json
+agents_dir: ../smallville_n25/agents
+agents: [isabella_rodriguez, maria_lopez, klaus_mueller, sam_moore, wolfgang_schulz]
+events: ../smallville_n25/events.yaml
+constraints: ../smallville_n25/constraints.yaml
+familiar_public_areas: from each agent's official spatial_memory.json

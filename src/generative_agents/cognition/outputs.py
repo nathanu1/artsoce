@@ -161,9 +161,23 @@ class JudgeOut(_Out):
 OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     m.__name__: m
     for m in (
-        ImportanceOut, ImportanceBatchOut, SummaryOut, ReflectionQuestionsOut, ReflectionInsightsOut,
-        DayPlanOut, HourlyScheduleOut, DecomposeOut, LocationChoiceOut, LocationPathOut,
-        ActionGroundingOut, ReactionDecisionOut, DialogueTurnOut, ConversationInferencesOut,
-        InterviewAnswerOut, AwarenessOut, StatementOut, JudgeOut,
+        ImportanceOut,
+        ImportanceBatchOut,
+        SummaryOut,
+        ReflectionQuestionsOut,
+        ReflectionInsightsOut,
+        DayPlanOut,
+        HourlyScheduleOut,
+        DecomposeOut,
+        LocationChoiceOut,
+        LocationPathOut,
+        ActionGroundingOut,
+        ReactionDecisionOut,
+        DialogueTurnOut,
+        ConversationInferencesOut,
+        InterviewAnswerOut,
+        AwarenessOut,
+        StatementOut,
+        JudgeOut,
     )
 }

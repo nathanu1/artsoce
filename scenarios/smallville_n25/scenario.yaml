@@ -1,0 +1,40 @@
+name: smallville_n25
+description: Imported from base_the_ville_n25 and agent_history_init_n25.csv
+source:
+  repo: joonspk-research/generative_agents
+  commit: fe05a71d3e4ed7d10bf68aa4eda6dd995ec070f4
+  base: environment/frontend_server/storage/base_the_ville_n25
+  history: environment/frontend_server/static_dirs/assets/the_ville/agent_history_init_n25.csv
+start: '2023-02-13T00:00:00'
+seconds_per_step: 10
+map: map/the_ville.json
+agents:
+- latoya_williams
+- rajiv_patel
+- abigail_chen
+- francisco_lopez
+- hailey_johnson
+- arthur_burton
+- ryan_park
+- isabella_rodriguez
+- giorgio_rossi
+- carlos_gomez
+- klaus_mueller
+- maria_lopez
+- ayesha_khan
+- wolfgang_schulz
+- mei_lin
+- john_lin
+- eddy_lin
+- tom_moreno
+- jane_moreno
+- tamara_taylor
+- carmen_ortiz
+- sam_moore
+- jennifer_moore
+- yuriko_yamamoto
+- adam_smith
+agents_dir: agents
+events: events.yaml
+constraints: constraints.yaml
+familiar_public_areas: from each agent's official spatial_memory.json

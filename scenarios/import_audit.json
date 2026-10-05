@@ -1,0 +1,76 @@
+{
+  "source_commit": "fe05a71d3e4ed7d10bf68aa4eda6dd995ec070f4",
+  "scenarios": {
+    "smallville_n25": {
+      "party_knowledge": [
+        {
+          "agent": "isabella_rodriguez",
+          "where": [
+            "seed 0",
+            "identity"
+          ]
+        }
+      ],
+      "candidacy_knowledge": [
+        {
+          "agent": "sam_moore",
+          "where": [
+            "seed 0",
+            "seed 1",
+            "identity"
+          ]
+        },
+        {
+          "agent": "jennifer_moore",
+          "where": [
+            "seed 10"
+          ]
+        }
+      ],
+      "seed_counts": {
+        "latoya_williams": 8,
+        "rajiv_patel": 8,
+        "abigail_chen": 5,
+        "francisco_lopez": 7,
+        "hailey_johnson": 9,
+        "arthur_burton": 14,
+        "ryan_park": 9,
+        "isabella_rodriguez": 16,
+        "giorgio_rossi": 12,
+        "carlos_gomez": 9,
+        "klaus_mueller": 8,
+        "maria_lopez": 8,
+        "ayesha_khan": 5,
+        "wolfgang_schulz": 7,
+        "mei_lin": 13,
+        "john_lin": 13,
+        "eddy_lin": 17,
+        "tom_moreno": 15,
+        "jane_moreno": 9,
+        "tamara_taylor": 3,
+        "carmen_ortiz": 9,
+        "sam_moore": 12,
+        "jennifer_moore": 11,
+        "yuriko_yamamoto": 9,
+        "adam_smith": 12
+      }
+    },
+    "pilot3": {
+      "party_knowledge": [
+        {
+          "agent": "isabella_rodriguez",
+          "where": [
+            "seed 0",
+            "identity"
+          ]
+        }
+      ],
+      "candidacy_knowledge": [],
+      "seed_counts": {
+        "isabella_rodriguez": 5,
+        "maria_lopez": 5,
+        "klaus_mueller": 5
+      }
+    }
+  }
+}

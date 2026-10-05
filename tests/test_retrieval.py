@@ -239,8 +239,15 @@ def test_store_is_append_only_and_isolated_per_agent(env):
     env.add("b", "only for b")
     assert [m.description for m in env.store.for_agent("a")] == ["only for a"]
     with pytest.raises(ValueError):
-        env.store.add(owner_id="a", kind=MemoryKind.OBSERVATION, origin=MemoryOrigin.DIRECT_OBSERVATION,
-                      description="  ", created_at=T0, importance=1, embedding_model="m")
+        env.store.add(
+            owner_id="a",
+            kind=MemoryKind.OBSERVATION,
+            origin=MemoryOrigin.DIRECT_OBSERVATION,
+            description="  ",
+            created_at=T0,
+            importance=1,
+            embedding_model="m",
+        )
 
 
 def test_clone_does_not_touch_source(env):
@@ -248,6 +255,7 @@ def test_clone_does_not_touch_source(env):
     before = env.db.content_hash()
     clone = env.db.clone()
     from generative_agents.memory.store import MemoryStore
+
     MemoryStore(clone).touch(["a.m00001"], T0 + hours(9))
     assert env.db.content_hash() == before
     assert clone.content_hash() != before

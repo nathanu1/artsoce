@@ -25,31 +25,63 @@ from generative_agents.simulation.budget import Budget
 
 NOW = datetime(2023, 2, 13, 9, 0)
 IDENT = AgentIdentity(
-    id="isabella_rodriguez", name="Isabella Rodriguez", first_name="Isabella", last_name="Rodriguez", age=34,
-    innate="friendly, outgoing, hospitable", learned="Isabella Rodriguez is a cafe owner of Hobbs Cafe.",
-    currently="Isabella is planning a party.", lifestyle="goes to bed around 11pm, awakes up around 6am.",
+    id="isabella_rodriguez",
+    name="Isabella Rodriguez",
+    first_name="Isabella",
+    last_name="Rodriguez",
+    age=34,
+    innate="friendly, outgoing, hospitable",
+    learned="Isabella Rodriguez is a cafe owner of Hobbs Cafe.",
+    currently="Isabella is planning a party.",
+    lifestyle="goes to bed around 11pm, awakes up around 6am.",
     living_area="the Ville:Isabella Rodriguez's apartment:main room",
 )
 
 
 def make_gateway(provider, *, budget=None, ledger=None, repairs=1, retries=2, replay=False):
     return LLMGateway(
-        provider, PromptRegistry(), ledger or CallLedger(None, scope="run-1"), budget or Budget(),
+        provider,
+        PromptRegistry(),
+        ledger or CallLedger(None, scope="run-1"),
+        budget or Budget(),
         GatewaySettings(model="m", max_retries=retries, max_validation_repairs=repairs, backoff_s=0),
-        replay=replay, sleep=lambda s: None,
+        replay=replay,
+        sleep=lambda s: None,
     )
 
 
 def imp_vars(text="Isabella is planning a Valentine's Day party"):
-    return {"agent_name": "Isabella", "agent_summary": "s", "mundane_examples": "x", "poignant_examples": "y",
-            "kind_label": "memory", "kind_title": "Memory", "memory": text, "_memory": text}
+    return {
+        "agent_name": "Isabella",
+        "agent_summary": "s",
+        "mundane_examples": "x",
+        "poignant_examples": "y",
+        "kind_label": "memory",
+        "kind_title": "Memory",
+        "memory": text,
+        "_memory": text,
+    }
 
 
 def test_every_template_renders_and_has_a_strict_schema():
     reg = PromptRegistry()
-    assert {"importance", "reflection_questions", "reflection_insights", "day_plan", "hourly_schedule", "decompose",
-            "replan", "choose_location", "action_grounding", "interaction_context", "reaction", "dialogue_turn",
-            "conversation_summary", "interview", "summary_aspect"} <= set(reg.tasks())
+    assert {
+        "importance",
+        "reflection_questions",
+        "reflection_insights",
+        "day_plan",
+        "hourly_schedule",
+        "decompose",
+        "replan",
+        "choose_location",
+        "action_grounding",
+        "interaction_context",
+        "reaction",
+        "dialogue_turn",
+        "conversation_summary",
+        "interview",
+        "summary_aspect",
+    } <= set(reg.tasks())
     for task in reg.tasks():
         tpl = reg.get(task)
         assert tpl.source and tpl.scope, f"{task} must state its source and information scope"
@@ -93,8 +125,16 @@ def test_repairs_exhausted_raises_instead_of_fabricating():
 
 def test_semantic_validator_drives_repair():
     gw = make_gateway(ScriptedLLM({"choose_location": [{"choice": "Mars"}, {"choice": "Hobbs Cafe"}]}))
-    v = {"agent_summary": "s", "agent_name": "I", "current_place": "x", "current_children": "", "level_plural": "areas",
-         "options": "Hobbs Cafe, Johnson Park", "level": "area", "activity": "work"}
+    v = {
+        "agent_summary": "s",
+        "agent_name": "I",
+        "current_place": "x",
+        "current_children": "",
+        "level_plural": "areas",
+        "options": "Hobbs Cafe, Johnson Park",
+        "level": "area",
+        "activity": "work",
+    }
     res = gw.run("choose_location", v, validate=lambda o: [] if o.choice in ("Hobbs Cafe", "Johnson Park") else ["not an option"])
     assert res.output.choice == "Hobbs Cafe"
 
@@ -169,16 +209,31 @@ def test_importance_idle_shortcut_and_range():
 
 
 def test_importance_batch_requires_one_rating_per_item():
-    gw = make_gateway(ScriptedLLM({"importance_batch": [
-        {"ratings": [{"id": "1", "rating": 3}]},
-        {"ratings": [{"id": "1", "rating": 3}, {"id": "2", "rating": 8}]},
-    ]}))
+    gw = make_gateway(
+        ScriptedLLM(
+            {
+                "importance_batch": [
+                    {"ratings": [{"id": "1", "rating": 3}]},
+                    {"ratings": [{"id": "1", "rating": 3}, {"id": "2", "rating": 8}]},
+                ]
+            }
+        )
+    )
     assert ImportanceScorer(gw).score_batch(IDENT, ["hello", "you're invited"], NOW) == [3, 8]
 
 
 def test_mock_provider_is_deterministic():
-    req = LLMRequest(task="importance", template_id="importance@v1", template_hash="h", system="s", prompt="p",
-                     output_schema={}, model="mock", max_output_tokens=10, variables={"_memory": "planning a party"})
+    req = LLMRequest(
+        task="importance",
+        template_id="importance@v1",
+        template_hash="h",
+        system="s",
+        prompt="p",
+        output_schema={},
+        model="mock",
+        max_output_tokens=10,
+        variables={"_memory": "planning a party"},
+    )
     assert MockLLM(seed=1).complete(req).text == MockLLM(seed=1).complete(req).text
 
 

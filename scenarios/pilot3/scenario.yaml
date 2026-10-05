@@ -1,0 +1,18 @@
+name: pilot3
+description: Imported from base_the_ville_isabella_maria_klaus and agent_history_init_n3.csv
+source:
+  repo: joonspk-research/generative_agents
+  commit: fe05a71d3e4ed7d10bf68aa4eda6dd995ec070f4
+  base: environment/frontend_server/storage/base_the_ville_isabella_maria_klaus
+  history: environment/frontend_server/static_dirs/assets/the_ville/agent_history_init_n3.csv
+start: '2023-02-13T00:00:00'
+seconds_per_step: 10
+map: ../smallville_n25/map/the_ville.json
+agents:
+- isabella_rodriguez
+- maria_lopez
+- klaus_mueller
+agents_dir: agents
+events: ../smallville_n25/events.yaml
+constraints: ../smallville_n25/constraints.yaml
+familiar_public_areas: from each agent's official spatial_memory.json

@@ -12,8 +12,19 @@ from typing import Any
 from pydantic import BaseModel
 
 _UNSUPPORTED = {
-    "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
-    "minLength", "maxLength", "pattern", "minItems", "maxItems", "uniqueItems", "default", "title",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minLength",
+    "maxLength",
+    "pattern",
+    "minItems",
+    "maxItems",
+    "uniqueItems",
+    "default",
+    "title",
 }
 
 

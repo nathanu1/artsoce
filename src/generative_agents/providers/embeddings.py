@@ -26,9 +26,47 @@ from .base import ProviderError
 
 _WORD = re.compile(r"[a-z0-9']+")
 _STOP = {
-    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being", "of", "to", "in", "on",
-    "at", "for", "and", "or", "with", "by", "as", "it", "its", "this", "that", "from", "his", "her",
-    "their", "they", "he", "she", "i", "you", "we", "my", "your", "our", "has", "have", "had",
+    "a",
+    "an",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "for",
+    "and",
+    "or",
+    "with",
+    "by",
+    "as",
+    "it",
+    "its",
+    "this",
+    "that",
+    "from",
+    "his",
+    "her",
+    "their",
+    "they",
+    "he",
+    "she",
+    "i",
+    "you",
+    "we",
+    "my",
+    "your",
+    "our",
+    "has",
+    "have",
+    "had",
 }
 
 
@@ -124,9 +162,7 @@ class EmbeddingCache:
         if path:
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             self.conn = sqlite3.connect(str(path), check_same_thread=False)
-            self.conn.execute(
-                "CREATE TABLE IF NOT EXISTS vectors (key TEXT PRIMARY KEY, model TEXT NOT NULL, dims INTEGER NOT NULL, vector BLOB NOT NULL)"
-            )
+            self.conn.execute("CREATE TABLE IF NOT EXISTS vectors (key TEXT PRIMARY KEY, model TEXT NOT NULL, dims INTEGER NOT NULL, vector BLOB NOT NULL)")
             self.conn.commit()
 
     def get(self, model_key: str, text: str) -> np.ndarray | None:

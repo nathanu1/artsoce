@@ -135,9 +135,11 @@ class MockLLM:
     def _t_summary_aspect(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         stmts = [s for s in v.get("_statements", []) if s]
         name = v.get("_name", "The agent")
-        lead = {"core": f"{name} is {v.get('_traits', 'a resident of the town')}.",
-                "occupation": f"{name} spends the day on the usual routine.",
-                "feeling": f"{name} feels steady about recent progress."}.get(v.get("_aspect", "core"), f"{name}.")
+        lead = {
+            "core": f"{name} is {v.get('_traits', 'a resident of the town')}.",
+            "occupation": f"{name} spends the day on the usual routine.",
+            "feeling": f"{name} feels steady about recent progress.",
+        }.get(v.get("_aspect", "core"), f"{name}.")
         if stmts:
             lead += " Notably: " + "; ".join(s.rstrip(".") for s in stmts[:2]) + "."
         return {"summary": lead}
@@ -156,7 +158,9 @@ class MockLLM:
         name = v.get("_name", "the agent")
         text = " ".join(v.get("_statements", []))
         others = [p for p, _ in Counter(re.findall(r"\b([A-Z][a-z]+ [A-Z][a-z]+)\b", text)).most_common() if p != name]
-        words = [w for w, _ in Counter(w for w in re.findall(r"[a-z]{5,}", text.lower()) if w not in {"about", "their", "there", "which", "would"}).most_common(6)]
+        words = [
+            w for w, _ in Counter(w for w in re.findall(r"[a-z]{5,}", text.lower()) if w not in {"about", "their", "there", "which", "would"}).most_common(6)
+        ]
         qs = [f"What is {name} most focused on lately?"]
         if others:
             qs.append(f"What is the relationship between {name} and {others[0]}?")
@@ -324,11 +328,21 @@ class MockLLM:
         obs = v.get("_observation", "").lower()
         if not v.get("_observed_is_agent"):
             if re.search(r"burning|fire|smok", obs):
-                return {"decision": "react", "reason": "Something is burning.", "new_activity": "turn off the stove and deal with the smoke" if "stove" in obs else "alert others about the fire and stay safe", "duration_minutes": 10}
+                return {
+                    "decision": "react",
+                    "reason": "Something is burning.",
+                    "new_activity": "turn off the stove and deal with the smoke" if "stove" in obs else "alert others about the fire and stay safe",
+                    "duration_minutes": 10,
+                }
             if "leak" in obs:
                 return {"decision": "react", "reason": "There is a leak.", "new_activity": "fix the leak", "duration_minutes": 15}
             if "empty" in obs and "refrigerator" in obs:
-                return {"decision": "react", "reason": "No food at home.", "new_activity": "go buy groceries at The Willows Market and Pharmacy", "duration_minutes": 45}
+                return {
+                    "decision": "react",
+                    "reason": "No food at home.",
+                    "new_activity": "go buy groceries at The Willows Market and Pharmacy",
+                    "duration_minutes": 45,
+                }
             if re.search(r"occupied|in use|closed", obs):
                 return {"decision": "wait", "reason": "It is not available right now.", "new_activity": None, "duration_minutes": 5}
             return {"decision": "continue", "reason": "Nothing needs attention.", "new_activity": None, "duration_minutes": None}

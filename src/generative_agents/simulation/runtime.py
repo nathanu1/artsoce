@@ -101,3 +101,31 @@ def build_runtime(
     cache = EmbeddingCache(repo_path(emb_cfg.cache_dir) / "embeddings.sqlite" if emb_cfg.kind != "mock-hash" else None)
     embeddings = EmbeddingService(emb_provider, store=store, cache=cache, ledger=ledger)
     return Runtime(gateway, embeddings, ledger, budget, registry, pricing, prov, getattr(prov, "name", "unknown"))
+
+
+def make_services(cfg: GAConfig, db: Any, runtime: Runtime, identities: dict[str, Any], step_getter: Callable[[], int | None] | None = None) -> Any:
+    """Wire the cognitive services around one run database."""
+
+    from ..cognition.importance import ImportanceScorer
+    from ..cognition.services import Services
+    from ..memory.retrieval import RetrievalSettings, Retriever
+    from ..memory.trace import TraceStore
+    from .state import EventLog, StateStore
+
+    store = runtime.embeddings.store if runtime.embeddings.store is not None else MemoryStore(db)
+    traces = TraceStore(db)
+    retriever = Retriever(store, runtime.embeddings, RetrievalSettings.from_config(cfg.retrieval), trace_sink=traces.sink)
+    importance = ImportanceScorer(runtime.gateway, idle_shortcut=cfg.importance.idle_shortcut, batch_statements=cfg.importance.batch_statements)
+    return Services(
+        cfg=cfg,
+        db=db,
+        store=store,
+        gateway=runtime.gateway,
+        embeddings=runtime.embeddings,
+        retriever=retriever,
+        importance=importance,
+        traces=traces,
+        states=StateStore(db),
+        events=EventLog(db, step_getter),
+        identities=identities,
+    )

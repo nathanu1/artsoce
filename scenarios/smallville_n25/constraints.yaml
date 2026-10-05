@@ -1,0 +1,24 @@
+# World constraints enforced only under constraints.policy=strict-v1 (spec J-7). This is an
+# engineering adaptation: the paper reports agents breaking these norms (p. 17) and did not
+# enforce them. The same policy applies to every experimental condition.
+opening_hours:
+  "the Ville:Harvey Oak Supply Store":
+    open: "08:00"
+    close: "17:00"
+    staff: [carmen_ortiz]
+    source: "paper p. 17 (stores close around 5 pm); opening time assumed"
+  "the Ville:The Willows Market and Pharmacy":
+    open: "08:00"
+    close: "17:00"
+    staff: [john_lin, tom_moreno]
+    source: "paper p. 17 (stores close around 5 pm); opening time assumed"
+  "the Ville:Hobbs Cafe":
+    open: "08:00"
+    close: "20:00"
+    staff: [isabella_rodriguez]
+    source: "Isabella's authored daily_plan_req: opens at 8am, closes at 8pm"
+# Arenas that hold one person at a time (paper p. 17: the dorm bathroom is single-occupancy)
+single_occupancy_arena_patterns: ["bathroom"]
+# Private bedrooms: an arena named "<Full Name>'s room" (or "...'s bedroom") is entered only by
+# the people named in it.
+private_room_patterns: ["'s room$", "'s bedroom$"]
