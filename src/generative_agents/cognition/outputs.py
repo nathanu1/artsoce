@@ -112,6 +112,7 @@ class ActionGroundingOut(_Out):
     predicate: str
     object: str
     object_state: str
+    lasting_state: str | None = None
 
 
 class ReactionDecisionOut(_Out):

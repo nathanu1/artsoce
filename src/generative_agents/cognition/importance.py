@@ -19,6 +19,9 @@ ANCHORS: dict[str, tuple[str, str, str, str]] = {
 }
 
 
+PLURALS = {"piece of memory": "memories", "conversation": "conversation statements", "thought": "thoughts"}
+
+
 def is_idle_text(text: str) -> bool:
     return text.rstrip(". ").endswith("is idle")
 
@@ -52,13 +55,16 @@ class ImportanceScorer:
         )
         return int(result.output.rating)
 
-    def score_batch(self, identity: AgentIdentity, texts: list[str], now: datetime, purpose: str | None = None) -> list[int]:
-        """One call for the statements of a single conversation (spec D-5)."""
+    def score_batch(self, identity: AgentIdentity, texts: list[str], now: datetime, purpose: str | None = None, kind: str = "conversation") -> list[int]:
+        """One call for the statements of one conversation or the items of one plan (spec D-5)."""
 
         if not texts:
             return []
+        if self.idle_shortcut and all(is_idle_text(t) for t in texts):
+            return [1] * len(texts)
         if not self.batch_statements:
-            return [self.score(identity, t, "conversation", now, purpose) for t in texts]
+            return [self.score(identity, t, kind, now, purpose) for t in texts]
+        mundane, poignant, label, _title = ANCHORS[kind]
         items = [(str(i), t) for i, t in enumerate(texts, start=1)]
         expected = {i for i, _ in items}
 
@@ -74,12 +80,16 @@ class ImportanceScorer:
             {
                 "agent_name": identity.name,
                 "agent_summary": identity_block(identity, now),
+                "mundane_examples": mundane,
+                "poignant_examples": poignant,
+                "kind_label_plural": PLURALS.get(label, label + "s"),
                 "numbered_memories": "\n".join(f"{i}. {t}" for i, t in items),
                 "_items": items,
+                "_kind": kind,
             },
             agent_id=identity.id,
             sim_time=now,
-            purpose=purpose or "importance:batch",
+            purpose=purpose or f"importance:batch:{kind}",
             validate=validate,
         )
         by_id = {r.id: r.rating for r in result.output.ratings}

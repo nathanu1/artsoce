@@ -20,7 +20,7 @@ class SpatialMemory:
     def __init__(self, agent_id: str, tree: dict[str, Any] | None = None, seen_states: dict[str, Any] | None = None):
         self.agent_id = agent_id
         self.tree: dict[str, dict[str, dict[str, list[str]]]] = copy.deepcopy(tree or {})
-        self.seen_states: dict[str, dict[str, str]] = dict(seen_states or {})  # address -> {state, at}
+        self.seen_states: dict[str, dict[str, str]] = dict(seen_states or {})  # address -> {state, since}
         self.dirty = False
 
     # ------------------------------------------------------------------ queries
@@ -77,10 +77,12 @@ class SpatialMemory:
         return changed
 
     def saw_state(self, address: str, state: str, when: datetime) -> None:
+        """Record the state the agent sees; ``at`` is when it first saw the object in that state."""
+
         prev = self.seen_states.get(address)
         if prev is None or prev.get("state") != state:
+            self.seen_states[address] = {"state": state, "at": when.isoformat()}
             self.dirty = True
-        self.seen_states[address] = {"state": state, "at": when.isoformat()}
 
     def believed_state(self, address: str) -> str | None:
         rec = self.seen_states.get(address)

@@ -59,3 +59,48 @@ def make_stack(provider=None, overrides: list[str] | None = None, identities=Non
 
 
 T = datetime(2023, 2, 13, 9, 0)
+
+
+# ---------------------------------------------------------------------- simulation helpers
+class CountingLLM:
+    """Wraps a provider and counts real (non-ledger) calls."""
+
+    def __init__(self, inner):
+        self.inner = inner
+        self.name = getattr(inner, "name", "counting")
+        self.calls = []
+
+    def describe(self):
+        return self.inner.describe()
+
+    def complete(self, request):
+        self.calls.append(request)
+        return self.inner.complete(request)
+
+
+def sim_config(population, *, start="2023-02-13T09:00:00", end="2023-02-13T12:00:00", extra=()):
+    pop = "[" + ", ".join(population) + "]"
+    return GAConfig.model_validate(
+        apply_overrides(
+            {},
+            [
+                "scenario.path=scenarios/pilot5/scenario.yaml",
+                f"scenario.population={pop}",
+                f"scenario.start={start}",
+                f"scenario.end={end}",
+                "output.checkpoint_every_steps=30",
+                *extra,
+            ],
+        )
+    )
+
+
+def make_sim(tmp_path, population, *, provider=None, name="run", **kw):
+    from generative_agents.simulation.engine import Simulation
+
+    cfg = sim_config(population, **kw)
+    return Simulation(cfg, tmp_path / name, provider=provider or MockLLM(seed=5), embedding_provider=MockHashEmbedding(128))
+
+
+def place(sim, agent_id, tile):
+    sim.svc.states.get(agent_id).tile = tuple(tile)

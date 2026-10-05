@@ -221,7 +221,7 @@ class MemoryStore:
             return set()
         rows = self.db.query(
             """SELECT subject, predicate, object FROM memories
-               WHERE owner_id=? AND origin=? ORDER BY seq DESC LIMIT ?""",
-            (owner_id, MemoryOrigin.DIRECT_OBSERVATION.value, n),
+               WHERE owner_id=? AND origin IN (?, ?) ORDER BY seq DESC LIMIT ?""",
+            (owner_id, MemoryOrigin.DIRECT_OBSERVATION.value, MemoryOrigin.EXECUTED_ACTION.value, n),
         )
         return {(r["subject"], r["predicate"], r["object"]) for r in rows}

@@ -24,10 +24,30 @@ from .base import LLMRequest, LLMResponse, ProviderError, estimate_tokens
 
 HIGH_WORDS = ("party", "valentine", "invite", "mayor", "election", "running for", "crush", "love", "date", "fire", "burning")
 MED_WORDS = ("said", "conversation", "talk", "friend", "plan", "research", "paper", "exam", "class", "show")
+FILLER = {
+    "about",
+    "their",
+    "there",
+    "which",
+    "would",
+    "plans",
+    "getting",
+    "started",
+    "continuing",
+    "making",
+    "progress",
+    "wrapping",
+    "monday",
+    "tuesday",
+    "february",
+    "conversation",
+    "these",
+    "while",
+}
 NEGATIONS = ("not sure", "don't know", "do not know", "no idea", "haven't heard", "have not heard", "don't remember", "do not remember", "not aware")
 
 LOCATION_RULES: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
-    (("sleep", "bed", "nap", "asleep"), ("bed", "{home}", "main room")),
+    (("sleep", "bed", "nap", "asleep"), ("bed", "{home}", "{room}", "main room")),
     (("party", "cafe", "coffee", "counter", "pastr", "barista", "customers"), ("Hobbs Cafe", "cafe", "behind the cafe counter", "cafe customer seating")),
     (("library", "research", "paper", "read", "study", "studying", "exam", "notes"), ("Oak Hill College", "library", "library table", "{home}")),
     (("class", "lecture", "teach", "seminar"), ("Oak Hill College", "classroom", "classroom student seating")),
@@ -63,7 +83,14 @@ def _parse_hour(text: str, default: int) -> int:
 
 
 def _first_person(text: str) -> str:
+    m = re.match(r'^(.*?) said to (.*?): "(.*)"$', text.strip())
+    if m:
+        quote = re.sub(r"^(hi|hello|hey) [a-z]+[!,.]\s*(did you hear\?\s*)?", "", m.group(3), flags=re.I)
+        quote = re.sub(r"^(oh, also:\s*)+", "", quote, flags=re.I)
+        quote = re.sub(r"\s*you should come!?$", "", quote, flags=re.I)
+        return f"{m.group(1)} told me: {quote.rstrip('.')}"
     s = re.sub(r"\*", "", text).strip()
+    s = re.sub(r"\b[Yy]ou (have|know|will|were|want|need|feel|think)\b", r"I \1", s)
     s = re.sub(r"\bYou are\b", "I am", s)
     s = re.sub(r"\byou are\b", "I am", s)
     s = re.sub(r"\bYou\b", "I", s)
@@ -176,12 +203,18 @@ class MockLLM:
         name = v.get("_name", "the agent")
         if not items:
             return {"insights": []}
+        own = {w.lower() for w in name.split()}
         out = []
         for k in range(min(n, max(1, len(items) // 2))):
             cited = rng.sample(items, k=min(len(items), rng.randint(1, 3)))
-            words = [w for w in re.findall(r"[a-z]{5,}", " ".join(t for _, t in cited).lower())]
-            topic = words[k % len(words)] if words else "daily life"
-            out.append({"insight": f"{name} seems to care about {topic}", "evidence": [h for h, _ in cited]})
+            text = " ".join(t for _, t in cited)
+            words = [w for w in re.findall(r"[a-z]{5,}", text.lower()) if w not in own and w not in FILLER]
+            topic = Counter(words).most_common(k + 1)[-1][0] if words else "daily life"
+            people = [p for p in re.findall(r"\b([A-Z][a-z]+ [A-Z][a-z]+)\b", text) if p.lower() not in (name.lower(),)]
+            if people and k % 2 == 1:
+                out.append({"insight": f"{name} has been spending time around {people[0]}", "evidence": [h for h, _ in cited]})
+            else:
+                out.append({"insight": f"{name} keeps coming back to {topic}", "evidence": [h for h, _ in cited]})
         return {"insights": out}
 
     # ------------------------------------------------------------------ planning tasks
@@ -193,10 +226,13 @@ class MockLLM:
         if bed <= wake:
             bed = 23 * 60
         routine = (ident.get("daily_plan_req") or ident.get("currently") or "go about the day").rstrip(".")
-        work = f"spend time on the daily routine: {routine[0].lower() + routine[1:] if routine else 'errands'}"
+        routine = re.sub(rf"^{re.escape(ident.get('name', ''))}\s*", "", routine).strip()[:100]
+        work = f"go about the daily routine ({routine})" if routine else "run errands"
+        about = " ".join(str(ident.get(k) or "") for k in ("learned", "currently", "lifestyle", "daily_plan_req")).lower()
+        lunch = "have lunch at Hobbs Cafe" if "hobbs cafe" in about else "have lunch"
         items = [(wake, "wake up and complete the morning routine"), (wake + 60, "have breakfast")]
-        items.append((max(wake + 120, 9 * 60), work))
-        items.append((12 * 60, "have lunch"))
+        items.append((max(wake + 120, 8 * 60), work))
+        items.append((12 * 60, lunch))
         items.append((13 * 60, work))
         knowledge = (v.get("_knowledge") or "").lower()
         day = v.get("_day_label", "")
@@ -209,6 +245,13 @@ class MockLLM:
             items.append((bed - 60, "relax and wind down"))
         items.append((bed, "go to bed"))
         items = sorted({t: a for t, a in items}.items())
+        hi = int(v.get("_max_items", 8))
+        while len(items) > hi:  # respect the requested size: drop the least essential items
+            for drop in ("relax and wind down", "have dinner", "have lunch", "have lunch at Hobbs Cafe"):
+                if len(items) > hi and any(a == drop for _, a in items):
+                    items = [(t, a) for t, a in items if a != drop]
+            if len(items) > hi:
+                items = items[: hi - 1] + items[-1:]
         return {"wake_up_time": _hhmm(wake), "items": [{"time": _hhmm(t), "activity": a} for t, a in items]}
 
     def _t_hourly_schedule(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
@@ -271,15 +314,19 @@ class MockLLM:
         home = v.get("_home", "")
         room = v.get("_room", "")
         current = v.get("_current")
+        for opt in sorted(options, key=lambda o: (-len(o), o)):  # a place the activity names
+            if len(opt) > 3 and re.search(rf"\b{re.escape(opt.lower())}\b", act):
+                return {"choice": opt}
         for keys, targets in LOCATION_RULES:
             if any(k in act for k in keys):
                 for target in targets:
                     target = target.replace("{home}", home).replace("{room}", room)
                     if not target:
                         continue
-                    for opt in options:
-                        if target.lower() == opt.lower() or (len(target) > 3 and target.lower() in opt.lower()):
-                            return {"choice": opt}
+                    exact = [o for o in options if o.lower() == target.lower()]
+                    partial = [o for o in options if len(target) > 3 and target.lower() in o.lower()]
+                    if exact or partial:
+                        return {"choice": (exact or partial)[0]}
                 break
         if current and current in options:
             return {"choice": current}
@@ -307,8 +354,14 @@ class MockLLM:
             state = "being used"
         else:
             state = "idle"
+        lasting = None
+        condition = (v.get("_condition") or "idle").lower()
+        if re.search(r"turn(ing)? off|put(ting)? out|extinguish", act) and condition != "idle":
+            lasting = "turned off"
+        elif re.search(r"restock|put(ting)? (away )?(the )?groceries|fill(ing)? (up )?the", act) and "empty" in condition:
+            lasting = "stocked"
         words = re.sub(r"\(.*?\)", "", v["_activity"]).strip().split()
-        return {"subject": name, "predicate": "is", "object": " ".join(words[:6]) or "busy", "object_state": state}
+        return {"subject": name, "predicate": "is", "object": " ".join(words[:6]) or "busy", "object_state": state, "lasting_state": lasting}
 
     # ------------------------------------------------------------------ social tasks
     def _t_interaction_context(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
@@ -328,12 +381,12 @@ class MockLLM:
         obs = v.get("_observation", "").lower()
         if not v.get("_observed_is_agent"):
             if re.search(r"burning|fire|smok", obs):
-                return {
-                    "decision": "react",
-                    "reason": "Something is burning.",
-                    "new_activity": "turn off the stove and deal with the smoke" if "stove" in obs else "alert others about the fire and stay safe",
-                    "duration_minutes": 10,
-                }
+                thing = obs.split(" is ", 1)[0].strip()
+                if v.get("_percept_kind") == "object" and thing:
+                    activity = f"put out the fire at the {thing}"
+                else:
+                    activity = "alert others about the fire and stay safe"
+                return {"decision": "react", "reason": "Something is burning.", "new_activity": activity, "duration_minutes": 10}
             if "leak" in obs:
                 return {"decision": "react", "reason": "There is a leak.", "new_activity": "fix the leak", "duration_minutes": 15}
             if "empty" in obs and "refrigerator" in obs:
@@ -375,8 +428,11 @@ class MockLLM:
             return {"utterance": text, "end_conversation": False}
         last = v.get("_last_utterance", "").lower()
         fresh = [n for n in news if _first_person(n)[:40].lower() not in heard.lower()]
-        if "party" in last and ("come" in last or "join" in last or "invit" in last):
+        invited = "party" in last and re.search(r"you should come|come to the party|join|invit", last) and "love to come" not in last
+        if invited and "love to come" not in heard.lower():
             text = "That sounds wonderful, I'd love to come to the party!"
+        elif "love to come" in last:
+            return {"utterance": f"Wonderful, see you there, {pfirst}!", "end_conversation": True}
         elif fresh and idx < limit - 1:
             text = f"Oh, also: {_first_person(fresh[0])}."
         elif idx >= limit - 1:

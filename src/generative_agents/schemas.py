@@ -143,7 +143,8 @@ class ActionState(BaseModel):
     subject: str | None = None
     predicate: str | None = None
     object: str | None = None
-    object_state: str | None = None  # proposed state for the target object
+    object_state: str | None = None  # state of the target object while in use
+    lasting_state: str | None = None  # lasting condition left behind (applied once on arrival)
     path: list[tuple[int, int]] = Field(default_factory=list)
     target_tile: tuple[int, int] | None = None
     conversation_id: str | None = None
