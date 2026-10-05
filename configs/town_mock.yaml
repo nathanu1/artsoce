@@ -1,0 +1,22 @@
+# The town game, offline: the paper's three-agent base (Isabella, Maria, Klaus) with the game
+# layer on, the deterministic mock model and hash embeddings. Zero cost and instant; residents'
+# words are mechanical (MOCK). Use it to try the interface:
+#   ga play --config configs/town_mock.yaml
+run:
+  name: town-mock
+  label: "town game (MOCK)"
+scenario:
+  path: scenarios/pilot3/scenario.yaml
+  start: "2023-02-13T07:00:00"
+  end: "2023-02-15T00:01:00"
+output:
+  checkpoint_every_steps: 30     # every 5 game minutes, so the inspector stays current
+game:
+  enabled: true
+providers:
+  llm: {kind: mock, model: mock-llm-v1}
+  embeddings: {kind: mock-hash, model: mock-hash-256, dims: 256}
+budget:
+  max_calls: 200000
+  max_input_tokens: null
+  max_output_tokens: null

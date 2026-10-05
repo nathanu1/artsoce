@@ -9,6 +9,7 @@ Source runs (each task's example comes from the first run that has one):
 
 * run `examples-main` (offline two-day pilot (MOCK)); default architecture settings
 * run `examples-compat` (offline smoke (MOCK)); settings that differ from the defaults: `architecture.post_conversation_inferences=True`, `scenario.seed_rendering=inner_thought_llm`
+* run `examples-game` (town game (MOCK)); settings that differ from the defaults: `game.enabled=True`
 
 > **MOCK OUTPUTS.** The inputs are what a model is sent in that state; the
 > outputs show the expected format only and are not evidence of how a model behaves.
@@ -29,11 +30,13 @@ Source runs (each task's example comes from the first run that has one):
 | [interaction_context](interaction_context.md) | `interaction_context@v1` | `SummaryOut` | `examples-main` | 212 | 212 | 0 | 0 |
 | [interview](interview.md) | `interview@v1` | `InterviewAnswerOut` | `examples-main` | 560 | 560 | 0 | 0 |
 | [judge](judge.md) | `judge@v1` | `JudgeOut` | `examples-main` | 500 | 500 | 0 | 0 |
+| [player_chat](player_chat.md) | `player_chat@v1` | `PlayerReplyOut` | `examples-game` | 3 | 3 | 0 | 0 |
 | [previous_day](previous_day.md) | `previous_day@v1` | `SummaryOut` | `examples-main` | 10 | 10 | 0 | 0 |
 | [reaction](reaction.md) | `reaction@v1` | `ReactionDecisionOut` | `examples-main` | 150 | 150 | 0 | 0 |
 | [reflection_insights](reflection_insights.md) | `reflection_insights@v1` | `ReflectionInsightsOut` | `examples-main` | 84 | 84 | 0 | 0 |
 | [reflection_questions](reflection_questions.md) | `reflection_questions@v1` | `ReflectionQuestionsOut` | `examples-main` | 28 | 28 | 0 | 0 |
 | [replan](replan.md) | `replan@v1` | `DecomposeOut` | `examples-main` | 56 | 56 | 0 | 0 |
+| [resident_request](resident_request.md) | `resident_request@v1` | `ResidentRequestOut` | `examples-game` | 3 | 3 | 0 | 0 |
 | [seed_thought](seed_thought.md) | `seed_thought@v1` | `StatementOut` | `examples-compat` | 51 | 51 | 0 | 0 |
 | [summary_aspect](summary_aspect.md) | `summary_aspect@v1` | `SummaryOut` | `examples-main` | 294 | 294 | 0 | 0 |
 

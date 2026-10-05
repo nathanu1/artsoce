@@ -150,6 +150,12 @@ class WorldState:
                 out.append(address)
         return out
 
+    def forget(self, address: str) -> None:
+        """The object no longer exists (a placed item was removed or renamed)."""
+
+        self.objects.pop(address, None)
+        self._dirty.add(address)
+
     def user_of(self, address: str) -> str | None:
         st = self.objects.get(address)
         return st.in_use_by if st else None

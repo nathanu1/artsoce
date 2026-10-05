@@ -1,0 +1,99 @@
+# Build catalog (an extension). Placed items become real objects in the world: residents see
+# them ("<name> is idle"), learn them into their own spatial memory, and may choose them for
+# activities through the paper's location choice. Names are what residents see, so keep them
+# plain and lowercase.
+#
+# footprint: [width, height] in tiles before rotation. placement: indoor | outdoor | any.
+# blocks: true makes the tiles impassable (fences, hedges, fountains); every other item can be
+# walked onto, like the furniture in the original map. cost: motifs per theme.
+# unlock: Town Pulse level that unlocks the item. shape: how the town view draws it.
+items:
+  # ---- Cozy
+  - {id: armchair, name: armchair, theme: cozy, category: furniture, footprint: [1, 1], placement: indoor, cost: {cozy: 2}, unlock: 1, shape: armchair}
+  - {id: braided_rug, name: braided rug, theme: cozy, category: decor, footprint: [2, 2], placement: indoor, cost: {cozy: 1, craft: 1}, unlock: 1, shape: rug}
+  - {id: tea_cart, name: tea cart, theme: cozy, category: furniture, footprint: [1, 1], placement: indoor, cost: {cozy: 2, kin: 1}, unlock: 2, shape: cart}
+  - {id: porch_swing, name: porch swing, theme: cozy, category: garden, footprint: [2, 1], placement: outdoor, cost: {cozy: 2, bloom: 1}, unlock: 3, shape: swing}
+  - {id: pie_stand, name: pie stand, theme: cozy, category: furniture, footprint: [2, 1], placement: any, cost: {cozy: 3, kin: 1}, unlock: 4, shape: stall}
+  # ---- Bloom
+  - {id: flower_planter, name: flower planter, theme: bloom, category: garden, footprint: [1, 1], placement: outdoor, cost: {bloom: 1}, unlock: 1, shape: planter}
+  - {id: birdbath, name: birdbath, theme: bloom, category: garden, footprint: [1, 1], placement: outdoor, cost: {bloom: 2}, unlock: 1, shape: birdbath}
+  - {id: potted_fern, name: potted fern, theme: bloom, category: decor, footprint: [1, 1], placement: any, cost: {bloom: 1}, unlock: 1, shape: potted_plant}
+  - {id: hedge, name: hedge, theme: bloom, category: structure, footprint: [1, 1], placement: outdoor, blocks: true, cost: {bloom: 1}, unlock: 2, shape: hedge}
+  - {id: cherry_tree, name: cherry tree, theme: bloom, category: garden, footprint: [1, 1], placement: outdoor, blocks: true, cost: {bloom: 3}, unlock: 3, shape: tree}
+  - {id: flower_arch, name: flower arch, theme: bloom, category: garden, footprint: [2, 1], placement: outdoor, cost: {bloom: 2, spark: 1}, unlock: 4, shape: arch}
+  # ---- Lore
+  - {id: bookshelf, name: bookshelf, theme: lore, category: furniture, footprint: [1, 1], placement: indoor, cost: {lore: 2}, unlock: 1, shape: bookshelf}
+  - {id: writing_desk, name: writing desk, theme: lore, category: furniture, footprint: [1, 1], placement: indoor, cost: {lore: 1, craft: 1}, unlock: 1, shape: desk}
+  - {id: reading_nook, name: reading nook, theme: lore, category: furniture, footprint: [2, 1], placement: indoor, cost: {lore: 2, cozy: 1}, unlock: 2, shape: reading_nook}
+  - {id: notice_board, name: notice board, theme: lore, category: decor, footprint: [1, 1], placement: any, cost: {lore: 1, kin: 1}, unlock: 2, shape: notice_board}
+  - {id: star_telescope, name: star telescope, theme: lore, category: garden, footprint: [1, 1], placement: outdoor, cost: {lore: 2, spark: 1}, unlock: 4, shape: telescope}
+  # ---- Spark
+  - {id: jukebox, name: jukebox, theme: spark, category: furniture, footprint: [1, 1], placement: indoor, cost: {spark: 2}, unlock: 1, shape: jukebox}
+  - {id: string_lights, name: string lights, theme: spark, category: decor, footprint: [1, 1], placement: any, cost: {spark: 1}, unlock: 1, shape: string_lights}
+  - {id: party_table, name: party table, theme: spark, category: furniture, footprint: [2, 1], placement: any, cost: {spark: 2, cozy: 1}, unlock: 2, shape: party_table}
+  - {id: little_stage, name: little stage, theme: spark, category: structure, footprint: [2, 2], placement: any, cost: {spark: 3, craft: 1}, unlock: 3, shape: stage}
+  - {id: confetti_cannon, name: confetti cannon, theme: spark, category: decor, footprint: [1, 1], placement: outdoor, cost: {spark: 2, craft: 1}, unlock: 5, shape: cannon}
+  # ---- Craft
+  - {id: easel, name: easel, theme: craft, category: furniture, footprint: [1, 1], placement: indoor, cost: {craft: 1}, unlock: 1, shape: easel}
+  - {id: workbench, name: workbench, theme: craft, category: furniture, footprint: [2, 1], placement: indoor, cost: {craft: 2}, unlock: 1, shape: workbench}
+  - {id: picket_fence, name: picket fence, theme: craft, category: structure, footprint: [1, 1], placement: outdoor, blocks: true, cost: {craft: 1}, unlock: 1, shape: fence}
+  - {id: pottery_wheel, name: pottery wheel, theme: craft, category: furniture, footprint: [1, 1], placement: indoor, cost: {craft: 2, cozy: 1}, unlock: 2, shape: pottery_wheel}
+  - {id: garden_sculpture, name: garden sculpture, theme: craft, category: garden, footprint: [1, 1], placement: outdoor, blocks: true, cost: {craft: 3}, unlock: 3, shape: sculpture}
+  # ---- Kin
+  - {id: bench, name: bench, theme: kin, category: garden, footprint: [2, 1], placement: outdoor, cost: {kin: 1, bloom: 1}, unlock: 1, shape: bench}
+  - {id: mailbox, name: mailbox, theme: kin, category: decor, footprint: [1, 1], placement: any, cost: {kin: 1}, unlock: 1, shape: mailbox}
+  - {id: picnic_table, name: picnic table, theme: kin, category: garden, footprint: [2, 2], placement: outdoor, cost: {kin: 2, cozy: 1}, unlock: 2, shape: picnic_table}
+  - {id: lamp_post, name: lamp post, theme: kin, category: garden, footprint: [1, 1], placement: outdoor, cost: {kin: 1, craft: 1}, unlock: 2, shape: lamp_post}
+  - {id: town_fountain, name: town fountain, theme: kin, category: structure, footprint: [2, 2], placement: outdoor, blocks: true, cost: {kin: 3, bloom: 2}, unlock: 4, shape: fountain}
+  - {id: gazebo, name: gazebo, theme: kin, category: structure, footprint: [3, 3], placement: outdoor, cost: {kin: 3, craft: 2, bloom: 1}, unlock: 5, shape: gazebo}
+
+# Paints recolor an item. A paint that matches the item's theme adds a little harmony to the
+# place's affinity feedback.
+paints:
+  - {id: apricot, name: Apricot, hex: "#F3A27B", theme: cozy}
+  - {id: sage, name: Sage, hex: "#94C98A", theme: bloom}
+  - {id: cornflower, name: Cornflower, hex: "#8EB1EC", theme: lore}
+  - {id: bubblegum, name: Bubblegum, hex: "#F19BC1", theme: spark}
+  - {id: butter, name: Butter, hex: "#F1CF72", theme: craft}
+  - {id: seafoam, name: Seafoam, hex: "#7CC8C1", theme: kin}
+  - {id: snow, name: Snow, hex: "#F7F7F2"}
+  - {id: cocoa, name: Cocoa, hex: "#8E6B57"}
+  - {id: slate, name: Slate, hex: "#6F7C8E"}
+
+# Templates place several items at once, relative to the first tile you click.
+templates:
+  - id: reading_corner
+    name: Reading corner
+    unlock: 1
+    parts:
+      - {item: bookshelf, dx: 0, dy: 0}
+      - {item: armchair, dx: 1, dy: 0}
+      - {item: potted_fern, dx: 2, dy: 0}
+  - id: garden_patch
+    name: Garden patch
+    unlock: 1
+    parts:
+      - {item: flower_planter, dx: 0, dy: 0}
+      - {item: flower_planter, dx: 1, dy: 0}
+      - {item: birdbath, dx: 0, dy: 1}
+      - {item: flower_planter, dx: 1, dy: 1}
+  - id: art_corner
+    name: Art corner
+    unlock: 2
+    parts:
+      - {item: easel, dx: 0, dy: 0}
+      - {item: workbench, dx: 1, dy: 0}
+  - id: picnic_spot
+    name: Picnic spot
+    unlock: 2
+    parts:
+      - {item: picnic_table, dx: 0, dy: 0}
+      - {item: lamp_post, dx: 2, dy: 0}
+      - {item: flower_planter, dx: 2, dy: 1}
+  - id: party_nook
+    name: Party nook
+    unlock: 3
+    parts:
+      - {item: party_table, dx: 0, dy: 0}
+      - {item: jukebox, dx: 2, dy: 0}
+      - {item: string_lights, dx: 0, dy: 1}

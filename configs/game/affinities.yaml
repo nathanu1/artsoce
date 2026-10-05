@@ -1,0 +1,52 @@
+# The six Affinity themes of the town game (an extension; see docs/game.md).
+#
+# A theme ties together:
+#   residents  - scored from their identity text (innate, learned, currently, lifestyle);
+#   activities - what a resident is doing right now;
+#   places     - sector, room and object names, plus the items placed there;
+#   gifts and buildable items - each belongs to one theme.
+#
+# Rename, recolor or re-keyword freely. There must be exactly six themes. Keywords are
+# matched as whole words, case-insensitively. Icons are Phosphor icon names.
+themes:
+  - id: cozy
+    name: Cozy
+    color: "#EE8A5C"
+    icon: Coffee
+    description: Warm homes, good food and slow mornings.
+    keywords: [cafe, coffee, tea, cocoa, cook, cooking, breakfast, lunch, dinner, bake, baking, kitchen, home, apartment, sofa, bed, nap, rest, relax, warm, cozy, comfort, refrigerator, toaster, meal, eat, eating, food, soup, quilt, blanket]
+  - id: bloom
+    name: Bloom
+    color: "#58B368"
+    icon: Leaf
+    description: Gardens, parks and fresh air.
+    keywords: [garden, gardening, park, plant, plants, flower, flowers, tree, trees, walk, walking, run, running, jog, outdoor, outdoors, outside, nature, grass, lake, bird, birds, fresh, picnic, weed, water, watering, sun]
+  - id: lore
+    name: Lore
+    color: "#4A82DD"
+    icon: BookOpen
+    description: Books, study and big ideas.
+    keywords: [library, book, books, read, reading, study, studying, research, paper, write, writing, class, classroom, college, lecture, essay, learn, learning, homework, desk, computer, blackboard, philosophy, science, chemistry, sociology, history, idea, ideas, thesis, exam, exams]
+  - id: spark
+    name: Spark
+    color: "#E2629B"
+    icon: Confetti
+    description: Parties, music and lively evenings.
+    keywords: [party, parties, music, musician, piano, guitar, harp, sing, singing, song, songs, dance, dancing, pub, bar, celebrate, celebration, valentine, valentines, festival, microphone, perform, performance, concert, game, games, fun, joke, jokes, comedy, karaoke]
+  - id: craft
+    name: Craft
+    color: "#D99A26"
+    icon: PaintBrush
+    description: Making things by hand.
+    keywords: [art, artist, artists, paint, painting, paints, draw, drawing, sketch, sketching, easel, craft, crafts, build, building, make, making, design, designing, supply, supplies, tool, tools, pottery, sculpt, sculpture, wood, sew, sewing, create, creative, illustration]
+  - id: kin
+    name: Kin
+    color: "#2A9D96"
+    icon: HandHeart
+    description: Neighbors, community and helping out.
+    keywords: [friend, friends, friendly, neighbor, neighbors, community, help, helping, volunteer, mayor, election, town, chat, chatting, talk, talking, visit, visiting, family, care, caring, pharmacy, health, shop, store, customer, customers, meeting, politics, together, neighborhood, service]
+
+# Rooms and places whose names contain one of these words count as outdoors (garden items
+# go there). Everything else with a room name counts as indoors. The street has no room
+# name, so nothing can be placed on it.
+outdoor_keywords: [garden, park, yard, lawn, plaza, field]

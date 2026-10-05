@@ -1,0 +1,34 @@
+# Motifs: collectable resources (an extension). Environmental motifs are found by searching
+# objects around town; each object can be searched once per in-game hour, and what it gives
+# depends on the theme its name, room and building suggest. Social motifs are left behind
+# when two residents finish a conversation, themed by what they talked about.
+# Building items and wrapping gifts costs motifs of the item's themes.
+motifs:
+  - {id: warm_mug, name: Warm Mug, theme: cozy, source: environment, icon: Coffee}
+  - {id: honey_drop, name: Honey Drop, theme: cozy, source: environment, icon: Drop}
+  - {id: hearth_glow, name: Hearth Glow, theme: cozy, source: social, icon: Fire}
+  - {id: clover_leaf, name: Clover Leaf, theme: bloom, source: environment, icon: Clover}
+  - {id: dew_bead, name: Dew Bead, theme: bloom, source: environment, icon: DropHalf}
+  - {id: petal_swirl, name: Petal Swirl, theme: bloom, source: social, icon: Flower}
+  - {id: ink_blot, name: Ink Blot, theme: lore, source: environment, icon: PenNib}
+  - {id: page_corner, name: Page Corner, theme: lore, source: environment, icon: BookmarkSimple}
+  - {id: bright_idea, name: Bright Idea, theme: lore, source: social, icon: Lightbulb}
+  - {id: melody_note, name: Melody Note, theme: spark, source: environment, icon: MusicNotes}
+  - {id: confetti_pop, name: Confetti Pop, theme: spark, source: environment, icon: Confetti}
+  - {id: laugh_spark, name: Laugh Spark, theme: spark, source: social, icon: Smiley}
+  - {id: paint_dab, name: Paint Dab, theme: craft, source: environment, icon: PaintBrush}
+  - {id: wood_curl, name: Wood Curl, theme: craft, source: environment, icon: Spiral}
+  - {id: clever_knot, name: Clever Knot, theme: craft, source: social, icon: Scissors}
+  - {id: ribbon_tie, name: Ribbon Tie, theme: kin, source: environment, icon: Gift}
+  - {id: lantern_light, name: Lantern Light, theme: kin, source: environment, icon: Lamp}
+  - {id: shared_secret, name: Shared Secret, theme: kin, source: social, icon: ChatsCircle}
+
+# Gifts are wrapped from one motif of their theme. Residents who love the theme are
+# delighted; the reply itself is written by the resident's language model.
+gifts:
+  - {id: spiced_cocoa, name: spiced cocoa, theme: cozy, icon: Coffee}
+  - {id: pressed_flower_card, name: pressed-flower card, theme: bloom, icon: Flower}
+  - {id: pocket_notebook, name: pocket notebook, theme: lore, icon: Notebook}
+  - {id: party_popper, name: party popper, theme: spark, icon: Confetti}
+  - {id: clay_charm, name: clay charm, theme: craft, icon: Shapes}
+  - {id: friendship_bracelet, name: friendship bracelet, theme: kin, icon: Heart}

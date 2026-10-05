@@ -1,0 +1,40 @@
+# The town game on your own computer: the three-agent vertical slice (Isabella, Maria, Klaus),
+# every resident thought and line from a local open-weight model through Ollama. No API key and
+# no charges. Pull the models once:
+#   ollama pull llama3.1:8b         # 4.9 GB; or mistral:7b (4.4 GB), llama3:8b (4.7 GB)
+#   ollama pull nomic-embed-text    # 0.3 GB
+#   ga doctor --config configs/town_ollama.yaml
+#   ga play --config configs/town_ollama.yaml
+# The town moves as fast as your machine answers; walking is instant, thinking takes a few
+# seconds per call. Everything is recorded, so `ga play --replay runs/<id>` shows it again
+# without calling the model.
+run:
+  name: town-ollama
+  label: "town game (Ollama)"
+scenario:
+  path: scenarios/pilot3/scenario.yaml
+  start: "2023-02-13T07:00:00"
+  end: "2023-02-15T00:01:00"
+output:
+  checkpoint_every_steps: 30
+game:
+  enabled: true
+providers:
+  llm:
+    kind: ollama
+    model: llama3.1:8b
+    base_url: http://localhost:11434
+    num_ctx: 8192
+    max_output_tokens: 768
+    temperature: 0.7
+    keep_alive: 30m
+    timeout_s: 600
+  embeddings:
+    kind: ollama
+    model: nomic-embed-text
+    dims: 768
+    base_url: http://localhost:11434
+budget:
+  max_calls: 200000
+  max_input_tokens: null
+  max_output_tokens: null

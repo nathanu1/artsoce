@@ -159,6 +159,42 @@ class JudgeOut(_Out):
     rationale: str
 
 
+class PlayerReplyOut(_Out):
+    """A resident's reply to the town builder (game layer)."""
+
+    utterance: str
+    mood: Literal["happy", "content", "neutral", "unsure", "sad"]
+
+    @field_validator("utterance")
+    @classmethod
+    def _nonempty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("utterance must not be empty")
+        return v
+
+
+class ResidentRequestOut(_Out):
+    """Something a resident would like the town builder to make (game layer).
+
+    ``theme`` and ``place`` are checked against the offered lists by the caller.
+    """
+
+    wish: str
+    theme: str
+    place: str
+    reason: str
+    request_line: str
+
+    @field_validator("wish", "request_line")
+    @classmethod
+    def _nonempty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+
 OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     m.__name__: m
     for m in (
@@ -180,5 +216,7 @@ OUTPUT_MODELS: dict[str, type[BaseModel]] = {
         AwarenessOut,
         StatementOut,
         JudgeOut,
+        PlayerReplyOut,
+        ResidentRequestOut,
     )
 }

@@ -1,0 +1,6 @@
+{"kind": "chat", "payload": {"agent": "isabella_rodriguez", "text": "Good morning, Isabella! How is the cafe today?"}, "seq": 1, "step": 0, "wall": 0}
+{"kind": "ask_request", "payload": {"agent": "klaus_mueller"}, "seq": 2, "step": 0, "wall": 0}
+{"kind": "search", "payload": {"address": "the Ville:Oak Hill College:library:bookshelf"}, "seq": 3, "step": 12, "wall": 0}
+{"kind": "gift", "payload": {"agent": "isabella_rodriguez", "gift": "party_popper"}, "seq": 4, "step": 18, "wall": 0}
+{"kind": "chat", "payload": {"agent": "klaus_mueller", "text": "What are you reading these days?"}, "seq": 5, "step": 30, "wall": 0}
+{"kind": "build", "payload": {"ops": [{"catalog_id": "flower_planter", "op": "place", "paint": "sage", "x": 76, "y": 33}, {"catalog_id": "bench", "op": "place", "x": 78, "y": 33}]}, "seq": 6, "step": 36, "wall": 0}

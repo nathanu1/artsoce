@@ -1,0 +1,15 @@
+# Where the player can build outdoors (an extension).
+#
+# zones: open street tiles inside each rectangle (x0, y0, x1, y1, inclusive) become a named
+# place when the game starts. Residents perceive what is placed there and learn the place when
+# they walk through it, like any other area. Only street tiles change; buildings never do.
+zones:
+  - id: town_square
+    sector: Town Square
+    arena: plaza
+    rect: [66, 29, 89, 37]   # the main road in front of Hobbs Cafe
+
+# Ground cover: map objects that items may be placed on (gardens are one object spread over
+# most of their tiles). Each keeps at least ground_min_tiles tiles so residents can still use it.
+ground_objects: [garden, lawn]
+ground_min_tiles: 4

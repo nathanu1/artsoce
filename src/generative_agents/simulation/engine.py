@@ -196,10 +196,23 @@ class Simulation:
         self.constraints = Constraints.load(cpath, cfg.constraints.policy)
         self.interventions: list[dict[str, Any]] = list(self._load_interventions())
         self.on_step: list[Callable[[StepReport], None]] = []
+        # Extension hooks (the game layer): inside a step's error handling, before the agents
+        # act and after moves are committed; flush and invalidate follow the engine's own state.
+        self.before_step_hooks: list[Callable[[datetime], None]] = []
+        self.after_step_hooks: list[Callable[[datetime], None]] = []
+        self.flush_hooks: list[Callable[[], None]] = []
+        self.invalidate_hooks: list[Callable[[], None]] = []
         self._last_frame: dict[str, list[Any]] = {}
         self._talk_requests: list[TalkRequest] = []
         self._busy: set[str] = set()
         self._report: StepReport | None = None
+        self.game: Any = None
+        if cfg.game.enabled:
+            from ..game.layer import GameLayer
+
+            self.db.execute("PRAGMA journal_mode=WAL")  # the live game reads while the engine writes
+            source = self.replay_from if self.replay_from is not None else self.run_dir
+            self.game = GameLayer(self, actions_path=source / "actions.jsonl", readonly_actions=self.replay_from is not None)
 
     def _import_embeddings(self, source_db: Path) -> None:
         if self.db.get_meta("embeddings_imported"):
@@ -406,11 +419,15 @@ class Simulation:
         self.svc.store.reset_seq_cache()
         self.svc.traces.reset()
         self._last_frame = {}
+        for hook in self.invalidate_hooks:
+            hook()
 
     def _checkpoint(self, note: str = "") -> None:
         self.svc.states.flush()
         self.spatial.flush()
         self.world_state.flush()
+        for hook in self.flush_hooks:
+            hook()
         self._frame(self.clock.step - 1, keyframe=True)
         self.db.set_meta("next_step", self.clock.step)
         self.db.set_meta("sim_time", iso(self.clock.now))
@@ -428,15 +445,21 @@ class Simulation:
         self._busy = set()
         try:
             self._apply_interventions(now)
+            for hook in self.before_step_hooks:
+                hook(now)
             views = self.views()
             occupancy = self._occupancy(views)
             for aid in self.order:
                 self._agent_step(aid, now, views, occupancy)
             self._resolve_talks(now, views)
             self._commit_moves(now)
+            for hook in self.after_step_hooks:
+                hook(now)
             self.svc.states.flush()
             self.spatial.flush()
             self.world_state.flush()
+            for hook in self.flush_hooks:
+                hook()
             self._frame(self.clock.step, keyframe=False)
         except BudgetExceeded as exc:
             raise RunStopped(RunStatus.BUDGET_EXHAUSTED, str(exc)) from exc
@@ -710,7 +733,13 @@ class Simulation:
                 return self.constraints.check(ident, address, now, occupancy, current_arena=self.world.arena_at(*here)) if self.constraints.active else ALLOW
 
             reuse = st.extra.get("last_location") if self.cfg.location.reuse_within_block else None
-            if reuse and reuse.get("block") == task.parent_id and reuse.get("address") and check(":".join(reuse["address"].split(":")[:3])).allowed:
+            if (
+                reuse
+                and reuse.get("block") == task.parent_id
+                and reuse.get("address")
+                and self.world.exists(reuse["address"])
+                and check(":".join(reuse["address"].split(":")[:3])).allowed
+            ):
                 loc = LocationResult(reuse["address"], choices=[{"level": "reused", "choice": reuse["address"], "asked": False}])
             else:
                 loc = self.locations.choose(ident, task.description, now, (s, a), self.spatial.get(ident.id), check=check)
@@ -921,6 +950,7 @@ class Simulation:
             "budget": {"limits": self.rt.budget.limits(), "usage": self.rt.budget.snapshot()},
             "code": {"package_version": __version__, "git_commit": git_commit(), "python": platform.python_version()},
             "replay_of": {"run_id": self.replay_scope, "dir": str(self.replay_from)} if self.replay_from else None,
+            "game": self.game.manifest() if self.game is not None else None,
         }
         (self.run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
         return manifest

@@ -1,0 +1,23 @@
+# Town Pulse: five levels of a town coming to life (an extension). Points come from what the
+# player does and from the residents' own social life. Levels unlock catalog items and
+# templates. None of this is ever shown to residents or put into their prompts.
+levels:
+  - {level: 1, name: Sleepy Hamlet, points: 0}
+  - {level: 2, name: Waking Village, points: 40}
+  - {level: 3, name: Friendly Town, points: 120}
+  - {level: 4, name: Lively Town, points: 260}
+  - {level: 5, name: Storybook Town, points: 480}
+points:
+  motif_found: 1
+  sparkle_collected: 2
+  chat: 2              # at most once per resident per in-game hour
+  gift: 4
+  gift_loved: 4        # bonus when the resident loves the gift's theme
+  item_placed: 2
+  request_fulfilled: 30
+  resident_conversation: 1
+friendship:            # 0-100 per resident; shown as hearts
+  chat: 3
+  gift: 4
+  gift_loved: 6
+  request_fulfilled: 15

@@ -216,6 +216,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     save_config(cfg, run_dir)
     if args.interventions:
         shutil.copy(args.interventions, run_dir / "interventions.yaml")
+    if args.actions:
+        if not cfg.game.enabled:
+            print("--actions needs a config with game.enabled: true")
+            return 2
+        shutil.copy(args.actions, run_dir / "actions.jsonl")
     sim = Simulation(cfg, run_dir)
     print(f"run {sim.run_id} ({cfg.run_mode}) → {run_dir}")
     until = datetime.fromisoformat(args.until) if args.until else None
@@ -563,6 +568,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--max-steps", type=int)
     sp.add_argument("--until", help="stop at this simulation time (ISO)")
     sp.add_argument("--interventions", help="YAML list of timed interventions")
+    sp.add_argument("--actions", help="scripted player actions (actions.jsonl) for a game run")
     sp.add_argument("--yes", action="store_true", help="confirm a live run within its configured limits")
     sp.set_defaults(func=cmd_run)
 

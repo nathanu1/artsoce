@@ -203,6 +203,25 @@ class InterviewSection(_Base):
     max_output_tokens: int = 400
 
 
+class GameSection(_Base):
+    """The town game layer: an extension on top of the reproduction (docs/game.md).
+
+    Off by default. When on, the player's actions are logged to ``actions.jsonl`` and applied
+    at step boundaries, so runs with a player still resume and replay exactly.
+    """
+
+    enabled: bool = False
+    content_dir: str = "configs/game"
+    builder_name: str = "the town builder"
+    auto_requests: bool = True  # each resident may ask for one thing per day once awake
+    request_hour: int = 9  # not before this hour
+    chat_memories: int = 8  # memories retrieved for each reply to the builder
+    chat_history_lines: int = 6
+    sparkle_minutes: int = 180  # how long a conversation's social motif stays to be picked up
+    search_cooldown_minutes: int = 60  # per object
+    starting_motifs: int = 2  # per theme, so the first build is possible right away
+
+
 class GAConfig(_Base):
     """Top-level configuration."""
 
@@ -222,6 +241,7 @@ class GAConfig(_Base):
     budget: BudgetSection = Field(default_factory=BudgetSection)
     output: OutputSection = Field(default_factory=OutputSection)
     interview: InterviewSection = Field(default_factory=InterviewSection)
+    game: GameSection = Field(default_factory=GameSection)
 
     @model_validator(mode="after")
     def _fidelity_defaults(self) -> GAConfig:
@@ -268,6 +288,7 @@ class GAConfig(_Base):
             ("clock.seconds_per_step", self.scenario.seconds_per_step, "C" if self.scenario.seconds_per_step == 10 else "E"),
             ("constraints.policy", self.constraints.policy, "E"),
             ("scenario.seed_rendering", self.scenario.seed_rendering, "P" if self.scenario.seed_rendering == "verbatim" else "C"),
+            ("game.enabled", self.game.enabled, "X" if self.game.enabled else "P"),
             (
                 "scenario.candidacy_seed_policy",
                 self.scenario.candidacy_seed_policy,

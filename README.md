@@ -175,14 +175,16 @@ One test checks that `prompts/examples/` matches the current templates. After ch
 regenerate the examples (about two minutes):
 
 ```bash
-rm -rf runs/examples-main runs/examples-compat
+rm -rf runs/examples-main runs/examples-compat runs/examples-game
 ga run --config configs/offline_pilot_2day.yaml --run-id examples-main
 ga evaluate --run-dir runs/examples-main
 ga interview --run-dir runs/examples-main --protocol configs/interviews_reference.yaml
 ga judge --run-dir runs/examples-main --name appendix_b
 ga run --config configs/offline_smoke.yaml --run-id examples-compat \
   --set scenario.seed_rendering=inner_thought_llm --set architecture.post_conversation_inferences=true
-rm -r prompts/examples && ga prompt-examples --run-dir runs/examples-main runs/examples-compat --out prompts/examples
+ga run --config configs/town_mock.yaml --run-id examples-game --actions configs/game/demo_actions.jsonl \
+  --set scenario.start=2023-02-13T10:00:00 --set scenario.end=2023-02-13T11:00:00
+rm -r prompts/examples && ga prompt-examples --run-dir runs/examples-main runs/examples-compat runs/examples-game --out prompts/examples
 ```
 
 ## Layout

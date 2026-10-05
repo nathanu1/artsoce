@@ -459,6 +459,55 @@ class MockLLM:
             note = f"{name} should remember the Valentine's Day party at Hobbs Cafe."
         return {"planning_note": note, "memo": f"{name} found the conversation pleasant." if t else None}
 
+    # ------------------------------------------------------------------ game layer
+    _REQUEST_WISHES = {
+        "cozy": "a comfy armchair",
+        "bloom": "some flowers to look after",
+        "lore": "a bookshelf for my notes",
+        "spark": "something fun for gatherings",
+        "craft": "a place to make things",
+        "kin": "somewhere neighbors can sit together",
+    }
+
+    def _t_player_chat(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
+        """Mechanical replies so the town game runs offline. Not model behavior."""
+
+        name = v.get("_first_name") or "I"
+        said = (v.get("_utterance") or "").lower()
+        gift = v.get("_gift")
+        if gift:
+            if v.get("_gift_loved"):
+                return {"utterance": f"A {gift}? I love it, thank you so much!", "mood": "happy"}
+            return {"utterance": f"Oh, a {gift}. That's kind of you, thank you.", "mood": "content"}
+        if v.get("_delivery"):
+            return {"utterance": f"You made the {v['_delivery']}! It's exactly what I hoped for. Thank you!", "mood": "happy"}
+        if any(w in said for w in ("hello", "hi ", "hey", "good morning", "good evening")) or said in ("hi", "hey"):
+            status = (v.get("_status") or "").strip()
+            line = f"Hi there! I'm {status}." if status else "Hi there!"
+            return {"utterance": f"{line} It's nice to see you, I'm {name}.", "mood": "happy"}
+        mems = [m for m in v.get("_memory_texts", []) if m]
+        if "?" in said and mems:
+            return {"utterance": f"Let me think. I remember this: {mems[0].rstrip('.')}.", "mood": "content"}
+        if "?" in said:
+            return {"utterance": "Hmm, I'm not sure about that.", "mood": "unsure"}
+        return {"utterance": rng.choice(["That's nice to hear.", "Thanks for telling me!", "Oh, really? Good to know."]), "mood": "content"}
+
+    def _t_resident_request(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
+        themes: list[str] = v.get("_theme_ids") or ["cozy"]
+        prefer: list[str] = [t for t in v.get("_identity_themes", []) if t in themes]
+        places: list[dict[str, Any]] = v.get("_place_options") or []
+        theme = prefer[0] if prefer else themes[rng.randrange(len(themes))]
+        fitting = [p for p in places if theme in p.get("fits", [])] or places
+        place = fitting[rng.randrange(len(fitting))]["label"] if fitting else ""
+        wish = self._REQUEST_WISHES.get(theme, "something nice")
+        return {
+            "wish": wish,
+            "theme": theme,
+            "place": place,
+            "reason": f"It would make my days at {place or 'home'} nicer.",
+            "request_line": f"Could you make {wish} for me at {place}? It would mean a lot.",
+        }
+
     def _t_interview(self, v: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         q = v.get("_question", "").lower()
         stmts: list[str] = v.get("_statements", [])
