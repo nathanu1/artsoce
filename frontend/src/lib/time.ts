@@ -7,11 +7,15 @@ const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" });
 const shortDay = new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" });
 const num = new Intl.NumberFormat();
+const dec2 = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const formatTime = (iso: string) => timeFmt.format(parse(iso));
 export const formatDay = (iso: string) => dayFmt.format(parse(iso));
 export const formatShortDay = (iso: string) => shortDay.format(parse(iso));
 export const formatNumber = (n: number) => num.format(n);
+export const formatDecimal = (n: number) => dec2.format(n);
+/** "Mon 9:40 AM" in the reader's locale. */
+export const formatDayTime = (iso: string) => `${shortDay.format(parse(iso))} ${timeFmt.format(parse(iso))}`;
 
 export function hourOf(iso: string): number {
   const d = parse(iso);

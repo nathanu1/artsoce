@@ -1,12 +1,13 @@
 import { Hammer, MagnifyingGlass, PencilSimple, X } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { iconByName } from "../lib/icons";
 import { formatTime, isBefore } from "../lib/time";
 import { useTown } from "../store";
 import { Button, IconButton, ThemeChip } from "./ui";
 import { objectName, placeOfAddress } from "../lib/places";
+import { failureBody } from "../lib/text";
 
 const SUGGESTIONS: [RegExp, string[]][] = [
   [/cooking|stove|oven|toaster/i, ["burning", "turned off", "messy"]],
@@ -25,7 +26,13 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
   const setBuild = useTown((s) => s.setBuild);
   const toast = useTown((s) => s.toast);
   const addPending = useTown((s) => s.addPending);
+  const pending = useTown((s) => s.pending);
   const reduce = useReducedMotion();
+  const cardRef = useRef<HTMLElement>(null);
+  const [sending, setSending] = useState(false);
+  useEffect(() => {
+    cardRef.current?.focus({ preventScroll: true });
+  }, []);
   const [hint, setHint] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const item = itemId ? poll?.game?.items.find((i) => i.id === itemId) : undefined;
@@ -53,13 +60,17 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
   }, [addr, item]);
 
   const act = async (kind: string, payload: Record<string, unknown>) => {
+    setSending(true);
     try {
       const ack = await api.action(kind, payload);
       addPending(ack.seq, kind);
     } catch (e) {
-      toast({ tone: "warn", title: "That did not work", body: (e as Error).message });
+      toast({ tone: "warn", title: kind === "search" ? "Could not search it" : "Could not change it", body: failureBody(e) });
+    } finally {
+      setSending(false);
     }
   };
+  const searching = sending || Object.values(pending).some((p) => p.kind === "search");
 
   const suggestions = SUGGESTIONS.find(([re]) => re.test(name))?.[1] ?? ["broken", "messy", "brand new"];
   const theme = themes.find((t) => t.id === (cat?.theme ?? hint));
@@ -67,6 +78,8 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
 
   return (
     <motion.section
+      ref={cardRef}
+      tabIndex={-1}
       initial={reduce ? false : { y: 24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
@@ -84,7 +97,7 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
             {state?.in_use_by ? `In use by ${info.residents.find((r) => r.id === state.in_use_by)?.first_name ?? "someone"}` : `It is ${state?.lasting ?? "idle"}`}
           </p>
         </div>
-        <IconButton label="Close" icon={X} onClick={() => select(null)} />
+        <IconButton label="Close (Esc)" icon={X} onClick={() => select(null)} />
       </div>
       {item && cat ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -105,11 +118,11 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
         </div>
       ) : replay ? null : (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button tone="primary" icon={MagnifyingGlass} disabled={!!cooling} onClick={() => act("search", { address: addr })}>
-            {cooling && cooldown ? `Search Again at ${formatTime(cooldown)}` : "Search for Motifs"}
+          <Button tone="primary" icon={MagnifyingGlass} disabled={!!cooling || searching} onClick={() => act("search", { address: addr })}>
+            {searching ? "Searching…" : cooling && cooldown ? `Search Again at ${formatTime(cooldown)}` : "Search for Motifs"}
           </Button>
           {theme && !item ? <span className="text-sm text-[var(--muted)]">Might hold {theme.name} motifs</span> : null}
-          <Button tone="ghost" icon={PencilSimple} onClick={() => setEditing(editing === null ? "" : null)} aria-expanded={editing !== null} title="Research: change the object's state, as in the paper (§3.1)">
+          <Button tone="ghost" icon={PencilSimple} onClick={() => setEditing(editing === null ? "" : null)} aria-expanded={editing !== null} title="Research: change the object’s state, as in the paper (§3.1)">
             Change State
           </Button>
         </div>
@@ -127,7 +140,7 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
           <p className="text-sm text-[var(--muted)]">Residents who see it will notice. Suggestions:</p>
           <div className="flex flex-wrap gap-1.5">
             {suggestions.map((s) => (
-              <button key={s} type="button" onClick={() => setEditing(s)} className="rounded-full bg-[var(--panel-2)] px-3 py-1 text-sm font-semibold hover:bg-[var(--panel-3)]">
+              <button key={s} type="button" onClick={() => setEditing(s)} className="rounded-full bg-[var(--panel-2)] px-3 py-1 text-sm font-semibold transition-colors hover:bg-[var(--panel-hover)]">
                 {s}
               </button>
             ))}
@@ -147,7 +160,7 @@ export function ObjectCard({ address, itemId }: { address?: string; itemId?: str
               className="min-h-10 min-w-0 flex-1 rounded-2xl border-2 border-[var(--line)] bg-[var(--panel)] px-3 text-[15px] placeholder:text-[var(--muted)]"
             />
             <Button type="submit" tone="primary">
-              Apply
+              Set State
             </Button>
           </div>
         </form>

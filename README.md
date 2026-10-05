@@ -141,7 +141,8 @@ In the town you can watch residents follow their own schedules and talk to each 
 them, take on requests they generate from their own goals, give gifts, collect motifs, and build
 and decorate (placement checks, snapping, paint, undo and redo, duplication, templates and
 affinity feedback) while the Town Pulse grows through five levels. The notebook (N) holds
-requests, collections, residents and the town. The research inspector (`/inspector`) shows
+requests, collections, residents and the town; Look Around (L) lists what is nearby, so the
+whole game can be played with the keyboard. The research inspector (`/inspector`) shows
 memories, retrieval scores, plans, reflections, information diffusion and the provenance of every
 model call; nothing in it is ever sent to residents. Game meters never enter a prompt either.
 Design, rules and what each action does to a resident's memory: [`docs/game.md`](docs/game.md).

@@ -145,9 +145,12 @@ A failed model call stops the town at its last checkpoint with the error shown; 
   three-quarter orthographic camera. `npm run build` writes the bundle to
   `src/generative_agents/game/web/`, which is committed so `ga play` needs no Node.js. For
   development: `cd frontend && npm ci && npm run dev` (proxies the API to `ga play` on port 8080).
-* Keyboard: N notebook, B build, Q and E turn, + and - zoom, WASD or arrows pan, Space pauses,
-  Esc closes; in build mode R rotates, D duplicates, Delete removes, Ctrl+Z and Ctrl+Shift+Z undo
-  and redo.
+* Keyboard: N notebook, L Look Around (a list of the sparkles, placed items and objects near the
+  middle of the view, so everything clickable in the town is also reachable without a pointer),
+  B build, Q and E turn, + and - zoom, WASD or arrows pan, Space pauses, Esc closes. In build
+  mode, once an item or template is chosen, the arrows move the placement cursor and P (or Enter)
+  places it; R rotates, D duplicates, Delete removes, Ctrl+Z and Ctrl+Shift+Z (⌘ on a Mac) undo
+  and redo. The notebook page and the inspector's view, filters and open call live in the URL.
 
 ## Research inspector
 

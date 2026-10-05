@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { footprint, push, shownItems, templateOps } from "../lib/build";
 import { activityIcon, activityLabel } from "../lib/icons";
+import { failureBody } from "../lib/text";
 import { isBefore, minutesBetween } from "../lib/time";
 import { themePaints, TownScene, type GhostPart, type OverlayLabel, type OverlayPoint } from "../scene/TownScene";
 import { useTown } from "../store";
@@ -281,7 +282,10 @@ export function TownView() {
         st.select({ kind: "resident", id: hit.id });
         break;
       case "sparkle":
-        void api.action("collect_sparkle", { sparkle: hit.id }).then((r) => st.addPending(r.seq, "collect")).catch((e) => st.toast({ tone: "warn", title: "Could not collect", body: String(e.message) }));
+        void api
+          .action("collect_sparkle", { sparkle: hit.id })
+          .then((r) => st.addPending(r.seq, "collect"))
+          .catch((e) => st.toast({ tone: "warn", title: "Could not collect the sparkle", body: failureBody(e) }));
         break;
       case "item": {
         const item = st.poll?.game?.items.find((i) => i.id === hit.key);
@@ -302,7 +306,12 @@ export function TownView() {
   const nameToId = useMemo(() => new Map(residents.map((r) => [r.id, r.first_name])), [residents]);
   return (
     <div ref={wrapRef} className="absolute inset-0">
-      <canvas ref={canvasRef} className={`block size-full touch-none ${mode === "build" ? "cursor-crosshair" : "cursor-pointer"}`} aria-label="The town, seen from above. Use the resident list in the notebook to select residents with the keyboard." />
+      <canvas
+        ref={canvasRef}
+        role="img"
+        className={`block size-full touch-none ${mode === "build" ? "cursor-crosshair" : "cursor-pointer"}`}
+        aria-label="The town, seen from above. With the keyboard, find residents in the notebook (N) and nearby things with Look Around (L)."
+      />
       <div ref={labelLayer} className="pointer-events-none absolute inset-0 overflow-hidden" />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {residents.map((r) => {
@@ -331,10 +340,11 @@ export function TownView() {
                 ) : null}
                 <span className="flex h-7 items-center gap-1 rounded-full bg-[var(--panel)] px-2 shadow-md" title={activityLabel(a?.activity ?? "")}>
                   {think ? (
-                    <span className="flex gap-0.5" aria-label="thinking">
+                    <span className="flex gap-0.5">
                       {[0, 1, 2].map((i) => (
-                        <span key={i} className="size-1.5 animate-bounce rounded-full bg-[var(--muted)]" style={{ animationDelay: `${i * 120}ms` }} />
+                        <span key={i} aria-hidden="true" className="size-1.5 animate-bounce rounded-full bg-[var(--muted)]" style={{ animationDelay: `${i * 120}ms` }} />
                       ))}
+                      <span className="sr-only">thinking</span>
                     </span>
                   ) : a?.sleeping ? (
                     <>

@@ -6,12 +6,12 @@ import { Hud } from "./components/Hud";
 import { Inspector } from "./components/Inspector";
 import { Notebook } from "./components/Notebook";
 import { ObjectCard } from "./components/ObjectCard";
-import { ChatSheet, ResidentCard } from "./components/ResidentCard";
+import { ResidentCard } from "./components/ResidentCard";
 import { Toasts, TownTalk } from "./components/Toasts";
 import { TownView } from "./components/TownView";
 import { decodeMap } from "./lib/map";
 import { hourOf } from "./lib/time";
-import { useTown } from "./store";
+import { useTown, type NotebookTab } from "./store";
 
 function scene() {
   return (window as unknown as { __town?: { rotate: (d: 1 | -1) => void; zoomBy: (f: number) => void; panPixels: (x: number, y: number) => void } }).__town;
@@ -33,7 +33,7 @@ function usePolling(enabled: boolean) {
         timer = window.setTimeout(tick, p.paused || p.error ? 600 : 220);
       } catch {
         failures++;
-        if (failures === 3) useTown.getState().toast({ tone: "warn", title: "Lost the town server", body: "Is `ga play` still running? Retrying…" });
+        if (failures === 3) useTown.getState().toast({ tone: "warn", title: "Lost the town server", body: "Check that \u201Cga play\u201D is still running. Retrying…" });
         timer = window.setTimeout(tick, Math.min(5000, 500 * failures));
       }
     };
@@ -48,11 +48,18 @@ function usePolling(enabled: boolean) {
 function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.closest("input, textarea, select, [role=dialog]")) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return; // leave browser and system shortcuts alone
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [role=dialog]")) return;
       const st = useTown.getState();
       const k = e.key.toLowerCase();
-      if (st.mode === "build" && ["r", "d", "delete", "backspace"].includes(k)) return; // build panel handles these
+      // Space belongs to whatever control has focus; only the town itself pauses on Space
+      const onControl = !!target?.closest("button, a, [role=tab], [tabindex]");
+      if (st.mode === "build" && ["r", "d", "p", "enter", "delete", "backspace"].includes(k)) return; // the build panel handles these
+      const placing = st.mode === "build" && ((st.tool === "place" && !!st.catalogId) || (st.tool === "template" && !!st.templateId));
+      if (placing && k.startsWith("arrow")) return; // arrows move the placement cursor instead of the view
       if (k === "n") st.notebook.open ? st.closeNotebook() : st.openNotebook();
+      else if (k === "l" && st.mode === "play") st.setLook(!st.look);
       else if (k === "b" && !st.poll?.replay) st.setMode(st.mode === "build" ? "play" : "build");
       else if (k === "q") scene()?.rotate(-1);
       else if (k === "e") scene()?.rotate(1);
@@ -62,7 +69,7 @@ function useShortcuts() {
       else if (k === "s" || k === "arrowdown") scene()?.panPixels(0, -60);
       else if (k === "a" || k === "arrowleft") scene()?.panPixels(60, 0);
       else if (k === "d" || k === "arrowright") scene()?.panPixels(-60, 0);
-      else if (k === " ") {
+      else if (k === " " && !onControl) {
         e.preventDefault();
         if (st.poll && !st.poll.error) void api.control(st.poll.paused ? "resume" : "pause").catch(() => undefined);
       } else if (k === "escape") {
@@ -82,23 +89,29 @@ function Loading({ error }: { error: string | null }) {
         <span className="flex size-16 items-center justify-center rounded-full bg-sun font-display text-3xl font-bold text-[#2a2838]" aria-hidden="true">
           S
         </span>
-        <h1 className="font-display text-2xl font-bold">Smallville Lab</h1>
-        {error ? (
-          <>
-            <p className="text-[var(--muted)]">{error}</p>
-            <p className="text-sm text-[var(--muted)]">
-              Start the town with <code className="rounded bg-[var(--panel-2)] px-1.5">ga play --config configs/town_ollama.yaml</code>, then reload this page.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-[var(--muted)]" aria-live="polite">
-              Waking up the town…
-            </p>
-            <div className="h-2 w-48 overflow-hidden rounded-full bg-[var(--panel-2)]">
-              <div className="h-full w-1/3 animate-pulse rounded-full bg-sun" />
-            </div>
-          </>
+        <h1 className="font-display text-2xl font-bold" translate="no">
+          Smallville Lab
+        </h1>
+        <div aria-live="polite" className="flex flex-col items-center gap-3">
+          {error ? (
+            <>
+              <p className="text-[var(--muted)]">{error}</p>
+              <p className="text-sm text-[var(--muted)]">
+                Start the town with{" "}
+                <code className="rounded bg-[var(--panel-2)] px-1.5" translate="no">
+                  ga play --config configs/town_ollama.yaml
+                </code>
+                , then reload this page.
+              </p>
+            </>
+          ) : (
+            <p className="text-[var(--muted)]">Waking up the town…</p>
+          )}
+        </div>
+        {error ? null : (
+          <div className="h-2 w-48 overflow-hidden rounded-full bg-[var(--panel-2)]" aria-hidden="true">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-sun" />
+          </div>
         )}
       </div>
     </div>
@@ -110,7 +123,6 @@ function Town() {
   const map = useTown((s) => s.map);
   const bootError = useTown((s) => s.bootError);
   const selection = useTown((s) => s.selection);
-  const chatWith = useTown((s) => s.chatWith);
   const mode = useTown((s) => s.mode);
   const notebookOpen = useTown((s) => s.notebook.open);
   const clock = useTown((s) => s.poll?.clock);
@@ -127,31 +139,49 @@ function Town() {
   usePolling(!!info);
   useShortcuts();
 
-  // sky follows the town's clock
+  // sky follows the town's clock (and stays dim in dark mode); the browser chrome follows the sky
+  const hour = clock ? Math.floor(hourOf(clock.time) * 4) / 4 : null;
   useEffect(() => {
-    if (!clock) return;
-    const h = hourOf(clock.time);
-    const night = h < 5.5 || h >= 20;
-    const dusk = (h >= 17.5 && h < 20) || (h >= 5.5 && h < 7);
+    if (hour === null) return;
+    const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    const night = hour < 5.5 || hour >= 20;
+    const dusk = (hour >= 17.5 && hour < 20) || (hour >= 5.5 && hour < 7);
+    const [top, bottom] = night ? ["#1c2a4f", "#3a4d78"] : dusk ? (dark ? ["#5a3b4a", "#7a5560"] : ["#f3a37f", "#ffd9a8"]) : dark ? ["#1d2a4a", "#3b4f74"] : ["#8fd0f2", "#e6f6fd"];
     const root = document.documentElement.style;
-    root.setProperty("--sky-top", night ? "#1c2a4f" : dusk ? "#f3a37f" : "#8fd0f2");
-    root.setProperty("--sky-bottom", night ? "#3a4d78" : dusk ? "#ffd9a8" : "#e6f6fd");
-  }, [clock]);
+    root.setProperty("--sky-top", top);
+    root.setProperty("--sky-bottom", bottom);
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) meta.content = top;
+  }, [hour]);
+
+  // the notebook's page lives in the URL (?notebook=collections), so it can be linked and reloaded
+  const notebookTab = useTown((s) => s.notebook.tab);
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("notebook");
+    if (tab && ["requests", "collections", "residents", "town"].includes(tab)) useTown.getState().openNotebook(tab as NotebookTab);
+  }, []);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (notebookOpen) q.set("notebook", notebookTab);
+    else q.delete("notebook");
+    const search = q.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
+  }, [notebookOpen, notebookTab]);
 
   if (!info || !map) return <Loading error={bootError} />;
   return (
-    <div className="relative h-full overflow-hidden bg-[linear-gradient(180deg,var(--sky-top),var(--sky-bottom))] transition-[background] duration-1000">
-      <TownView />
-      <div className="pointer-events-none absolute inset-0 z-10">
-        {mode === "build" ? <BuildPanel /> : <Hud />}
-        {mode === "play" ? <TownTalk /> : null}
-        <AnimatePresence>
-          {mode === "play" && selection?.kind === "resident" ? <ResidentCard key={selection.id} id={selection.id} /> : null}
-          {mode === "play" && selection?.kind === "object" ? <ObjectCard key={selection.address} address={selection.address} /> : null}
-          {mode === "play" && selection?.kind === "item" ? <ObjectCard key={selection.id} itemId={selection.id} /> : null}
-          {mode === "play" && chatWith ? <ChatSheet key={`chat-${chatWith}`} id={chatWith} /> : null}
-        </AnimatePresence>
-      </div>
+    <div className="relative h-full overflow-hidden bg-[linear-gradient(180deg,var(--sky-top),var(--sky-bottom))]">
+      <main className="absolute inset-0" inert={notebookOpen || undefined}>
+        <TownView />
+        <div className="pointer-events-none absolute inset-0 z-10">
+          {mode === "build" ? <BuildPanel /> : <Hud />}
+          {mode === "play" && !selection ? <TownTalk /> : null}
+          <AnimatePresence>
+            {mode === "play" && selection?.kind === "resident" ? <ResidentCard key={selection.id} id={selection.id} /> : null}
+            {mode === "play" && selection?.kind === "object" ? <ObjectCard key={selection.address} address={selection.address} /> : null}
+            {mode === "play" && selection?.kind === "item" ? <ObjectCard key={selection.id} itemId={selection.id} /> : null}
+          </AnimatePresence>
+        </div>
+      </main>
       {notebookOpen ? <Notebook /> : null}
       <Toasts />
     </div>

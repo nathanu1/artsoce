@@ -32,6 +32,7 @@
   --panel: #fffdf9;
   --panel-2: #f3f1fa;
   --panel-3: #e9f4fb;
+  --panel-hover: #e5e1f3;
   --line: #e2ddef;
   --text: #2a2838;
   --muted: #625f75;
@@ -46,6 +47,7 @@
     --panel: #24273a;
     --panel-2: #2d3148;
     --panel-3: #293851;
+    --panel-hover: #3b4060;
     --line: #3b405c;
     --text: #f2f0fa;
     --muted: #b7b3cc;
@@ -74,6 +76,12 @@
     overflow: hidden;
   }
 
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
 
   /* Visible keyboard focus everywhere, never on mouse click. */
   :where(button, a, input, select, textarea, [tabindex]):focus-visible {

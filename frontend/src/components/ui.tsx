@@ -1,5 +1,5 @@
 import { Heart, type Icon } from "@phosphor-icons/react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { iconByName } from "../lib/icons";
 import type { Look, Theme } from "../types";
 
@@ -7,12 +7,12 @@ type Tone = "primary" | "soft" | "ghost" | "danger";
 
 const TONES: Record<Tone, string> = {
   primary: "bg-sun text-[#2a2838] shadow-[0_4px_0_var(--color-sun-deep)] hover:brightness-105",
-  soft: "bg-[var(--panel-2)] text-[var(--text)] hover:bg-[var(--panel-3)]",
+  soft: "bg-[var(--panel-2)] text-[var(--text)] hover:bg-[var(--panel-hover)]",
   ghost: "bg-transparent text-[var(--text)] hover:bg-[var(--panel-2)]",
-  danger: "bg-[#ffe1de] text-[#8a1f17] hover:bg-[#ffd2cd] dark:bg-[#4a2a2e] dark:text-[#ffd6d2]",
+  danger: "bg-[#ffe1de] text-[#8a1f17] hover:bg-[#ffd2cd] dark:bg-[#4a2a2e] dark:text-[#ffd6d2] dark:hover:bg-[#5c3338]",
 };
 
-export function Button({ tone = "soft", icon: IconCmp, children, className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: Tone; icon?: Icon }) {
+export function Button({ tone = "soft", icon: IconCmp, children, className = "", ...rest }: ComponentProps<"button"> & { tone?: Tone; icon?: Icon }) {
   return (
     <button
       type="button"
@@ -25,19 +25,31 @@ export function Button({ tone = "soft", icon: IconCmp, children, className = "",
   );
 }
 
-export function IconButton({ label, icon: IconCmp, active = false, className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; icon: Icon; active?: boolean }) {
+/**
+ * A round icon button. `pressed` makes it a toggle (aria-pressed, true or false); `active` only
+ * styles it (for example a popover that is open, which says so with aria-expanded).
+ */
+export function IconButton({
+  label,
+  icon: IconCmp,
+  active,
+  pressed,
+  className = "",
+  ...rest
+}: ComponentProps<"button"> & { label: string; icon: Icon; active?: boolean; pressed?: boolean }) {
+  const on = active ?? pressed ?? false;
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      aria-pressed={active || undefined}
-      className={`inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-[transform,background-color] duration-150 active:scale-95 disabled:opacity-40 ${
-        active ? "bg-sun text-[#2a2838]" : "bg-[var(--panel-2)] text-[var(--text)] hover:bg-[var(--panel-3)]"
+      aria-pressed={pressed}
+      className={`inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-[transform,background-color,filter] duration-150 active:scale-95 disabled:opacity-40 ${
+        on ? "bg-sun text-[#2a2838] hover:brightness-105" : "bg-[var(--panel-2)] text-[var(--text)] hover:bg-[var(--panel-hover)]"
       } ${className}`}
       {...rest}
     >
-      <IconCmp size={21} weight={active ? "fill" : "bold"} aria-hidden="true" />
+      <IconCmp size={21} weight={on ? "fill" : "bold"} aria-hidden="true" />
     </button>
   );
 }

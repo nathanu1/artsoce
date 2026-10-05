@@ -483,6 +483,11 @@ export class TownScene {
     if (this.reduced) this.target.copy(this.targetGoal);
   }
 
+  /** The tile at the middle of the view. */
+  viewCenter(): Tile {
+    return [Math.floor(this.target.x), Math.floor(this.target.z)];
+  }
+
   rotate(dir: 1 | -1) {
     this.azimuthGoal += dir;
     if (this.reduced) this.azimuth = this.azimuthGoal;

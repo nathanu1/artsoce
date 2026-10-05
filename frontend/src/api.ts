@@ -13,7 +13,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...init });
   } catch {
-    throw new ApiError(0, "The town server is not answering. Check that `ga play` is still running.");
+    throw new ApiError(0, "The town server is not answering.");
   }
   if (!res.ok) {
     let detail = res.statusText;

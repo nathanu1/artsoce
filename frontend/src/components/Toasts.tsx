@@ -1,6 +1,6 @@
 import { CaretDown, CaretUp, ChatsCircle, Info, Sparkle, Star, Warning, X } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatTime } from "../lib/time";
 import { useTown } from "../store";
 import type { Theme } from "../types";
@@ -19,8 +19,24 @@ export function Toasts() {
   const dismiss = useTown((s) => s.dismiss);
   const themes = useTown((s) => s.info?.content.themes ?? NO_THEMES);
   const reduce = useReducedMotion();
+  // toasts hide by themselves, but never while the pointer or keyboard focus is on one
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused || !toasts.length) return;
+    const now = Date.now();
+    const ids = toasts.map((t) => window.setTimeout(() => dismiss(t.id), Math.max(1500, t.until - now)));
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [toasts, paused, dismiss]);
   return (
-    <div className="pointer-events-none fixed right-3 top-[180px] z-20 flex w-[min(92vw,340px)] flex-col gap-2 sm:right-4 md:top-24" aria-live="polite" role="status">
+    <div
+      className="pointer-events-none fixed right-3 top-[180px] z-20 flex w-[min(92vw,340px)] flex-col gap-2 sm:right-4 md:top-24"
+      aria-live="polite"
+      role="status"
+      onFocus={() => setPaused(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false);
+      }}
+    >
       <AnimatePresence initial={false}>
         {toasts.map((t, i) => {
           const tone = TONE[t.tone];
@@ -34,16 +50,18 @@ export function Toasts() {
               animate={{ x: 0, opacity: 1, scale: 1 }}
               exit={reduce ? { opacity: 0 } : { x: 30, opacity: 0 }}
               transition={{ type: "spring", stiffness: 360, damping: 30 }}
+              onMouseEnter={() => setPaused(true)}
+              onMouseLeave={() => setPaused(false)}
               className={`pointer-events-auto panel items-start gap-2.5 px-3 py-2.5 ${i < toasts.length - 2 ? "hidden sm:flex" : "flex"} ${t.tone === "level" ? "border-[#f2a33a]" : ""}`}
             >
               <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 20%, var(--panel))` }}>
                 <Icon size={18} weight="fill" color={color} aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display font-bold leading-snug">{t.title}</p>
+                <p className="break-words font-display font-bold leading-snug">{t.title}</p>
                 {t.body ? <p className="break-words text-sm text-[var(--muted)]">{t.body}</p> : null}
               </div>
-              <button type="button" onClick={() => dismiss(t.id)} aria-label="Dismiss" className="rounded-full p-1 hover:bg-[var(--panel-2)]">
+              <button type="button" onClick={() => dismiss(t.id)} aria-label="Dismiss" className="shrink-0 rounded-full p-1 hover:bg-[var(--panel-hover)]">
                 <X size={14} weight="bold" aria-hidden="true" />
               </button>
             </motion.div>
@@ -64,7 +82,7 @@ export function TownTalk() {
   const latest = recent[0];
   return (
     <div className="pointer-events-auto panel absolute bottom-3 right-16 hidden w-[320px] p-3 sm:bottom-4 sm:right-[76px] xl:block">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="-m-1 flex w-[calc(100%+0.5rem)] items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-[var(--panel-hover)]">
         <ChatsCircle size={20} weight="fill" color="#2a9d96" aria-hidden="true" />
         <span className="flex-1 font-display font-bold">Town Talk</span>
         {open ? <CaretDown size={16} weight="bold" aria-hidden="true" /> : <CaretUp size={16} weight="bold" aria-hidden="true" />}

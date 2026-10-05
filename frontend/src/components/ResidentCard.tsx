@@ -1,13 +1,22 @@
 import { ChatCircleDots, Crosshair, Gift as GiftIcon, PaperPlaneRight, Question, SealCheck, Wind, X } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { api } from "../api";
 import { activityIcon, activityLabel, iconByName } from "../lib/icons";
+import { placeOfAddress, placeOfLabel } from "../lib/places";
+import { failureBody } from "../lib/text";
 import { formatTime, hourOf } from "../lib/time";
 import { useTown } from "../store";
 import type { ResidentDetail } from "../types";
 import { Button, Hearts, IconButton, Portrait, ThemeChip } from "./ui";
-import { placeOfAddress, placeOfLabel } from "../lib/places";
+
+const FAILED: Record<string, string> = {
+  chat: "Could not send your message",
+  gift: "Could not give the gift",
+  ask_request: "Could not ask for a wish",
+  deliver: "Could not deliver it",
+  whisper: "Could not whisper",
+};
 
 async function send(kind: string, payload: Record<string, unknown>, agent?: string) {
   const st = useTown.getState();
@@ -15,7 +24,7 @@ async function send(kind: string, payload: Record<string, unknown>, agent?: stri
     const ack = await api.action(kind, payload);
     st.addPending(ack.seq, kind, agent);
   } catch (e) {
-    st.toast({ tone: "warn", title: "That did not work", body: (e as Error).message });
+    st.toast({ tone: "warn", title: FAILED[kind] ?? "That did not work", body: failureBody(e) });
   }
 }
 
@@ -33,6 +42,15 @@ export function ResidentCard({ id }: { id: string }) {
   const reduce = useReducedMotion();
   const [giftOpen, setGiftOpen] = useState(false);
   const [whisper, setWhisper] = useState<string | null>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const chatBtn = useRef<HTMLButtonElement>(null);
+  const giftBtn = useRef<HTMLButtonElement>(null);
+
+  // keyboard and screen-reader users land on the card that just opened
+  useEffect(() => {
+    cardRef.current?.focus({ preventScroll: true });
+  }, []);
+
   const r = info.residents.find((x) => x.id === id);
   if (!r) return null;
   const a = frame?.agents[id];
@@ -45,18 +63,21 @@ export function ResidentCard({ id }: { id: string }) {
   const busy = Object.values(pending).some((p) => p.agent === id);
   const thinking = !!poll?.thinking[id];
   const replay = !!poll?.replay;
+  const chatting = chatWith === id;
   const unavailable = a?.sleeping ? `${r.first_name} is asleep` : a?.partner ? `${r.first_name} is talking with ${a.partner}` : null;
   const Act = activityIcon(a?.activity ?? "");
   const place = placeOfAddress(a?.address);
 
   return (
     <motion.section
+      ref={cardRef}
+      tabIndex={-1}
       key={id}
       initial={reduce ? false : { y: 24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={reduce ? undefined : { y: 24, opacity: 0 }}
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
-      className="pointer-events-auto panel absolute bottom-3 left-1/2 w-[min(94vw,720px)] -translate-x-1/2 p-4 sm:bottom-4"
+      className="pointer-events-auto panel absolute bottom-3 left-1/2 flex max-h-[calc(100dvh-1.5rem)] w-[min(94vw,720px)] -translate-x-1/2 flex-col p-4 sm:bottom-4"
       aria-label={`${r.name}, resident`}
     >
       <div className="flex items-start gap-3">
@@ -64,7 +85,10 @@ export function ResidentCard({ id }: { id: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h2 className="font-display text-xl font-bold">{r.name}</h2>
-            <span className="text-sm font-bold text-[var(--muted)]">{r.age}</span>
+            <span className="text-sm font-bold text-[var(--muted)]">
+              <span className="sr-only">Age </span>
+              {r.age}
+            </span>
             <Hearts value={friendship} />
           </div>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -76,23 +100,26 @@ export function ResidentCard({ id }: { id: string }) {
           </p>
           {place ? <p className="truncate text-sm text-[var(--muted)]">{place}</p> : null}
         </div>
-        <IconButton label="Close" icon={X} onClick={() => select(null)} />
+        <IconButton label="Close (Esc)" icon={X} onClick={() => select(null)} />
       </div>
 
-      {schedule?.blocks.length ? (
-        <div className="scroll-thin mt-3 flex gap-1 overflow-x-auto pb-1" aria-label={`${r.first_name}'s plan for today`}>
+      {schedule?.blocks.length && !chatting ? (
+        <ol className="scroll-thin mt-3 flex gap-1 overflow-x-auto pb-1" aria-label={`${r.first_name}’s plan for today`} tabIndex={0}>
           {schedule.blocks.map((b) => {
             const start = hourOf(b.start);
             const nowH = now ? hourOf(now) : 0;
             const current = nowH >= start && nowH < start + b.minutes / 60;
             return (
-              <div key={b.start} className={`min-w-[96px] shrink-0 rounded-2xl px-2.5 py-1.5 text-xs ${current ? "bg-sun text-[#2a2838]" : "bg-[var(--panel-2)]"}`}>
-                <div className="font-display font-bold tabular">{formatTime(b.start)}</div>
+              <li key={b.start} aria-current={current ? "time" : undefined} className={`min-w-[96px] shrink-0 rounded-2xl px-2.5 py-1.5 text-xs ${current ? "bg-sun text-[#2a2838]" : "bg-[var(--panel-2)]"}`}>
+                <div className="font-display font-bold tabular">
+                  {formatTime(b.start)}
+                  {current ? <span className="sr-only"> (now)</span> : null}
+                </div>
                 <div className="line-clamp-2 font-semibold">{activityLabel(b.description)}</div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ol>
       ) : null}
 
       {req ? (
@@ -100,22 +127,33 @@ export function ResidentCard({ id }: { id: string }) {
           {req.status === "ready" ? <SealCheck size={20} weight="fill" color="#3f9a50" aria-hidden="true" /> : <Question size={20} weight="fill" color="#f2792b" aria-hidden="true" />}
           <p className="min-w-0 flex-1 text-sm">
             <span className="font-bold">Wishes for {req.wish}</span> <span className="text-[var(--muted)]">at {placeOfLabel(req.place_label)}</span>
+            {req.status === "ready" ? <span className="sr-only"> (ready to deliver)</span> : null}
           </p>
           <ThemeChip theme={themes.find((t) => t.id === req.theme)} size="sm" />
           {req.status === "ready" && !replay ? (
-            <Button tone="primary" disabled={!!unavailable || busy} onClick={() => send("deliver", { request: req.id }, id)}>
+            <Button tone="primary" disabled={!!unavailable || busy} onClick={() => send("deliver", { request: req.id }, id)} aria-label={`Deliver it to ${r.first_name}`}>
               Deliver
             </Button>
           ) : null}
         </div>
       ) : null}
 
+      {chatting && !replay ? (
+        <ChatPanel
+          id={id}
+          onClose={() => {
+            setChat(null);
+            chatBtn.current?.focus();
+          }}
+        />
+      ) : null}
+
       {replay ? null : (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button tone="primary" icon={ChatCircleDots} onClick={() => setChat(chatWith === id ? null : id)} disabled={!!unavailable} aria-expanded={chatWith === id} data-chat-button="">
+          <Button ref={chatBtn} tone="primary" icon={ChatCircleDots} onClick={() => setChat(chatting ? null : id)} disabled={!!unavailable && !chatting} aria-expanded={chatting}>
             Chat
           </Button>
-          <Button icon={GiftIcon} onClick={() => setGiftOpen((v) => !v)} disabled={!!unavailable || busy} aria-expanded={giftOpen}>
+          <Button ref={giftBtn} icon={GiftIcon} onClick={() => setGiftOpen((v) => !v)} disabled={!!unavailable || busy} aria-expanded={giftOpen}>
             Give a Gift
           </Button>
           {!req ? (
@@ -127,6 +165,7 @@ export function ResidentCard({ id }: { id: string }) {
             tone="ghost"
             icon={Crosshair}
             aria-pressed={follow === id}
+            className={follow === id ? "bg-sun/25" : ""}
             onClick={() => {
               if (follow === id) setFollow(null);
               else {
@@ -135,7 +174,7 @@ export function ResidentCard({ id }: { id: string }) {
               }
             }}
           >
-            {follow === id ? "Following" : "Follow"}
+            Follow
           </Button>
           <Button tone="ghost" icon={Wind} onClick={() => setWhisper(whisper === null ? "" : null)} aria-expanded={whisper !== null} title="Research: add an inner-voice memory (paper §3.1)">
             Whisper
@@ -146,35 +185,35 @@ export function ResidentCard({ id }: { id: string }) {
 
       <AnimatePresence>
         {giftOpen ? (
-          <motion.div initial={reduce ? false : { height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={reduce ? undefined : { height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {info.content.gifts.map((g) => {
-                const theme = themes.find((t) => t.id === g.theme)!;
-                const have = game?.theme_counts[g.theme] ?? 0;
-                const Icon = iconByName(g.icon);
-                const loved = r.loves.includes(g.theme);
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    disabled={have < g.cost}
-                    onClick={() => {
-                      setGiftOpen(false);
-                      void send("gift", { agent: id, gift: g.id }, id);
-                    }}
-                    className="flex items-center gap-2 rounded-2xl bg-[var(--panel-2)] px-3 py-2 text-left transition-colors hover:bg-[var(--panel-3)] disabled:opacity-45"
-                  >
-                    <Icon size={22} weight="fill" color={theme.color} aria-hidden="true" />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold capitalize">{g.name}</span>
-                      <span className="block text-xs text-[var(--muted)]">
-                        1 {theme.name} motif{loved ? `, ${r.first_name} loves ${theme.name}` : ""}
-                      </span>
+          <motion.div initial={reduce ? false : { y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={reduce ? undefined : { y: 8, opacity: 0 }} className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Gifts you can wrap">
+            {info.content.gifts.map((g) => {
+              const theme = themes.find((t) => t.id === g.theme)!;
+              const have = game?.theme_counts[g.theme] ?? 0;
+              const Icon = iconByName(g.icon);
+              const loved = r.loves.includes(g.theme);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  disabled={have < g.cost}
+                  onClick={() => {
+                    setGiftOpen(false);
+                    giftBtn.current?.focus();
+                    void send("gift", { agent: id, gift: g.id }, id);
+                  }}
+                  className="flex items-center gap-2 rounded-2xl bg-[var(--panel-2)] px-3 py-2 text-left transition-colors hover:bg-[var(--panel-hover)] disabled:opacity-45"
+                >
+                  <Icon size={22} weight="fill" color={theme.color} aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold capitalize">{g.name}</span>
+                    <span className="block text-xs text-[var(--muted)]">
+                      1 {theme.name} motif{loved ? `, ${r.first_name} loves ${theme.name}` : ""}
+                      {have < g.cost ? <span className="sr-only"> (not enough motifs)</span> : null}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
+                  </span>
+                </button>
+              );
+            })}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -196,13 +235,14 @@ export function ResidentCard({ id }: { id: string }) {
             id="whisper"
             name="whisper"
             autoComplete="off"
+            maxLength={300}
             value={whisper}
             onChange={(e) => setWhisper(e.target.value)}
-            placeholder={`You want to visit the library tomorrow…`}
-            className="min-h-10 flex-1 rounded-2xl border-2 border-[var(--line)] bg-[var(--panel)] px-3 text-[15px] placeholder:text-[var(--muted)]"
+            placeholder="You want to visit the library tomorrow…"
+            className="min-h-10 min-w-0 flex-1 rounded-2xl border-2 border-[var(--line)] bg-[var(--panel)] px-3 text-[15px] placeholder:text-[var(--muted)]"
           />
           <Button type="submit" tone="soft">
-            Whisper
+            Send Whisper
           </Button>
         </form>
       ) : null}
@@ -210,15 +250,16 @@ export function ResidentCard({ id }: { id: string }) {
   );
 }
 
-export function ChatSheet({ id }: { id: string }) {
+/** The conversation with one resident, inside their card. */
+function ChatPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const info = useTown((s) => s.info)!;
   const pending = useTown((s) => s.pending);
   const feed = useTown((s) => s.feed);
-  const setChat = useTown((s) => s.setChat);
   const reduce = useReducedMotion();
   const [detail, setDetail] = useState<ResidentDetail | null>(null);
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const r = info.residents.find((x) => x.id === id)!;
   const waiting = Object.values(pending).some((p) => p.agent === id);
 
@@ -232,6 +273,12 @@ export function ChatSheet({ id }: { id: string }) {
       alive = false;
     };
   }, [id]);
+
+  // type right away with a keyboard and mouse; on touch screens do not pop the keyboard up uninvited
+  useEffect(() => {
+    if (window.matchMedia?.("(pointer: fine)").matches) inputRef.current?.focus();
+    else listRef.current?.focus();
+  }, []);
 
   const lines = useMemo(() => {
     const out: { who: "you" | "them"; text: string; key: string }[] = [];
@@ -251,66 +298,81 @@ export function ChatSheet({ id }: { id: string }) {
     return out;
   }, [detail, feed, id]);
 
+  // only replies that arrive while the chat is open are announced, not the loaded history
+  const historyCount = useRef<number | null>(null);
+  if (detail && historyCount.current === null) historyCount.current = lines.length;
+  const fresh = historyCount.current !== null ? lines.slice(historyCount.current).filter((l) => l.who === "them") : [];
+  const announce = fresh.length ? fresh[fresh.length - 1].text : "";
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: reduce ? "auto" : "smooth" });
   }, [lines.length, waiting, reduce]);
 
   return (
-    <motion.aside
-      initial={reduce ? false : { x: 40, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={reduce ? undefined : { x: 40, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="pointer-events-auto panel absolute inset-x-3 bottom-3 flex max-h-[70dvh] flex-col overflow-hidden sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-24 sm:max-h-[calc(100dvh-12rem)] sm:w-[360px]"
+    <div
+      className="mt-3 flex min-h-0 flex-col rounded-2xl border-2 border-[var(--line)]"
+      role="region"
       aria-label={`Chat with ${r.first_name}`}
       onKeyDown={(e) => {
         if (e.key !== "Escape") return;
         e.stopPropagation();
-        setChat(null);
-        document.querySelector<HTMLButtonElement>("[data-chat-button]")?.focus();
+        onClose();
       }}
     >
-      <div className="flex items-center gap-2 border-b-2 border-[var(--line)] px-3 py-2">
-        <Portrait look={r.look} size={32} />
-        <h2 className="flex-1 font-display text-lg font-bold">Chat with {r.first_name}</h2>
-        <IconButton label="Close chat" icon={X} onClick={() => setChat(null)} />
+      <div className="flex items-center gap-2 border-b-2 border-[var(--line)] px-3 py-1.5">
+        <h3 className="flex-1 font-display font-bold">Chat with {r.first_name}</h3>
+        <IconButton label="Close Chat (Esc)" icon={X} onClick={onClose} className="size-9" />
       </div>
-      <div ref={listRef} className="scroll-thin flex-1 space-y-2 overflow-y-auto overscroll-contain p-3" aria-live="polite">
+      <div ref={listRef} tabIndex={-1} className="scroll-thin max-h-[min(36dvh,300px)] min-h-16 space-y-2 overflow-y-auto overscroll-contain p-3">
         {!lines.length && !waiting ? <p className="text-sm text-[var(--muted)]">Say hello. {r.first_name} remembers what you talk about.</p> : null}
         {lines.map((l) => (
           <p key={l.key} className={`max-w-[85%] break-words rounded-2xl px-3 py-2 text-[15px] ${l.who === "you" ? "ml-auto bg-sun/25" : "bg-[var(--panel-2)]"}`}>
+            <span className="sr-only">{l.who === "you" ? "You: " : `${r.first_name}: `}</span>
             {l.text}
           </p>
         ))}
         {waiting ? <p className="w-fit rounded-2xl bg-[var(--panel-2)] px-3 py-2 text-[15px] text-[var(--muted)]">{r.first_name} is thinking…</p> : null}
       </div>
-      <form
-        className="flex items-center gap-2 border-t-2 border-[var(--line)] p-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const msg = text.trim();
-          if (!msg) return;
-          setText("");
-          void send("chat", { agent: id, text: msg }, id);
-        }}
-      >
-        <label htmlFor="chat-input" className="sr-only">
-          Message to {r.first_name}
-        </label>
-        <input
-          id="chat-input"
-          name="message"
-          autoComplete="off"
-          maxLength={400}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={`Ask ${r.first_name} about their day…`}
-          className="min-h-11 min-w-0 flex-1 rounded-2xl border-2 border-[var(--line)] bg-[var(--panel)] px-3 text-[15px] placeholder:text-[var(--muted)]"
-        />
-        <button type="submit" disabled={!text.trim()} aria-label="Send" className="inline-flex size-11 items-center justify-center rounded-full bg-sun text-[#2a2838] transition-transform active:scale-95 disabled:opacity-40">
-          <PaperPlaneRight size={20} weight="fill" aria-hidden="true" />
-        </button>
-      </form>
-    </motion.aside>
+      <p className="sr-only" aria-live="polite">
+        {announce ? `${r.first_name}: ${announce}` : ""}
+      </p>
+      <ChatInput id={id} name={r.first_name} text={text} setText={setText} inputRef={inputRef} />
+    </div>
+  );
+}
+
+function ChatInput({ id, name, text, setText, inputRef }: { id: string; name: string; text: string; setText: (t: string) => void; inputRef: RefObject<HTMLInputElement | null> }) {
+  return (
+    <form
+      className="flex items-center gap-2 border-t-2 border-[var(--line)] p-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const msg = text.trim();
+        if (!msg) {
+          inputRef.current?.focus();
+          return;
+        }
+        setText("");
+        void send("chat", { agent: id, text: msg }, id);
+      }}
+    >
+      <label htmlFor="chat-input" className="sr-only">
+        Message to {name}
+      </label>
+      <input
+        ref={inputRef}
+        id="chat-input"
+        name="message"
+        autoComplete="off"
+        maxLength={400}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={`Ask ${name} about their day…`}
+        className="min-h-11 min-w-0 flex-1 rounded-2xl border-2 border-[var(--line)] bg-[var(--panel)] px-3 text-[15px] placeholder:text-[var(--muted)]"
+      />
+      <button type="submit" aria-label="Send" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-sun text-[#2a2838] transition-[transform,filter] hover:brightness-105 active:scale-95">
+        <PaperPlaneRight size={20} weight="fill" aria-hidden="true" />
+      </button>
+    </form>
   );
 }

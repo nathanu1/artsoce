@@ -1,6 +1,7 @@
 import { Crosshair, HandHeart, Lock, MapPin, Question, SealCheck, Star, X } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef } from "react";
+import { TabList, tabPanelProps } from "./Tabs";
 import { activityIcon, activityLabel, iconByName } from "../lib/icons";
 import { formatNumber, formatTime } from "../lib/time";
 import { useTown, type NotebookTab } from "../store";
@@ -20,17 +21,22 @@ export function Notebook() {
   const open = useTown((s) => s.openNotebook);
   const close = useTown((s) => s.closeNotebook);
   const reduce = useReducedMotion();
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const opener = useRef<Element | null>(null);
 
+  // Esc closes; focus goes back where it came from (the rest of the page is inert meanwhile)
   useEffect(() => {
-    dialogRef.current?.focus();
+    opener.current = document.activeElement;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      const el = opener.current;
+      if (el instanceof HTMLElement && el.isConnected) el.focus({ preventScroll: true });
+    };
   }, [close]);
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-30 flex items-center justify-center bg-[#1b2440]/35 p-3 backdrop-blur-[2px]" onClick={close}>
+    <div className="pointer-events-auto fixed inset-0 z-30 flex items-center justify-center bg-[#1b2440]/35 p-3 backdrop-blur-[2px]" onClick={close} role="presentation">
       <motion.div
         role="dialog"
         aria-modal="true"
@@ -38,10 +44,8 @@ export function Notebook() {
         initial={reduce ? false : { scale: 0.94, y: 18, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 280, damping: 26 }}
-        ref={dialogRef}
-        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex h-[min(86dvh,720px)] outline-none w-[min(96vw,980px)] overflow-hidden rounded-[28px] bg-[var(--panel)] shadow-[var(--shadow)]"
+        className="relative flex h-[min(86dvh,720px)] w-[min(96vw,980px)] overflow-hidden rounded-[28px] bg-[var(--panel)] shadow-[var(--shadow)]"
       >
         {/* spiral binding */}
         <div className="hidden w-10 shrink-0 flex-col items-center justify-around bg-[var(--panel-2)] py-6 sm:flex" aria-hidden="true">
@@ -52,25 +56,21 @@ export function Notebook() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-2 border-b-2 border-[var(--line)] px-4 py-3">
             <h2 id="notebook-title" className="font-display text-2xl font-bold">
-              My Notebook
+              Town Notebook
             </h2>
-            <div className="order-last -mx-1 flex basis-full gap-1 overflow-x-auto px-1 sm:order-none sm:ml-2 sm:min-w-0 sm:flex-1 sm:basis-auto" role="tablist" aria-label="Notebook pages">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={nb.tab === t.id}
-                  onClick={() => open(t.id)}
-                  className={`whitespace-nowrap rounded-full px-3.5 py-1.5 font-display text-sm font-semibold transition-colors ${nb.tab === t.id ? "bg-sun text-[#2a2838]" : "hover:bg-[var(--panel-2)]"}`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <IconButton label="Close notebook (Esc)" icon={X} onClick={close} className="ml-auto" />
+            <TabList
+              items={TABS}
+              value={nb.tab}
+              onChange={(t) => open(t)}
+              idPrefix="notebook"
+              label="Notebook pages"
+              focusOnMount
+              className="order-last -mx-1 flex basis-full gap-1 overflow-x-auto px-1 py-1 sm:order-none sm:ml-2 sm:min-w-0 sm:flex-1 sm:basis-auto"
+              tabClassName={(on) => `whitespace-nowrap rounded-full px-3.5 py-1.5 font-display text-sm font-semibold transition-colors ${on ? "bg-sun text-[#2a2838]" : "hover:bg-[var(--panel-hover)]"}`}
+            />
+            <IconButton label="Close Notebook (Esc)" icon={X} onClick={close} className="ml-auto" />
           </div>
-          <div className="paper-lines scroll-thin flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6" role="tabpanel">
+          <div className="paper-lines scroll-thin flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6" {...tabPanelProps("notebook", nb.tab)}>
             {nb.tab === "requests" ? <RequestsPage /> : nb.tab === "collections" ? <CollectionsPage /> : nb.tab === "residents" ? <ResidentsPage /> : <TownPage />}
           </div>
         </div>
@@ -115,7 +115,10 @@ function RequestsPage() {
                 <p className="truncate text-sm text-[var(--muted)]">{placeOfLabel(q.place_label)}</p>
               </div>
               {q.status === "fulfilled" ? (
-                <SealCheck size={26} weight="fill" color="#3f9a50" aria-label="Fulfilled" />
+                <span className="flex items-center gap-1 font-display text-xs font-bold text-[#22612f] dark:text-[#bfe8c8]">
+                  <SealCheck size={24} weight="fill" color="#3f9a50" aria-hidden="true" />
+                  Fulfilled
+                </span>
               ) : q.status === "ready" ? (
                 <span className="rounded-full bg-[#dff3e2] px-2.5 py-1 font-display text-xs font-bold text-[#22612f]">Ready</span>
               ) : (
@@ -129,11 +132,11 @@ function RequestsPage() {
               </ThemeChip>
               <span className="text-xs text-[var(--muted)]">{q.outdoor ? "outdoors" : "indoors"}</span>
               <div className="ml-auto flex gap-1.5">
-                <Button tone="ghost" icon={MapPin} onClick={() => (showPlace(q.place_address), close())}>
-                  Show Me
+                <Button tone="ghost" icon={MapPin} onClick={() => (showPlace(q.place_address), close())} aria-label={`Show ${r.first_name}’s place on the map`}>
+                  Show on Map
                 </Button>
                 {q.status === "ready" ? (
-                  <Button tone="primary" onClick={() => (select({ kind: "resident", id: q.agent_id }), close())}>
+                  <Button tone="primary" onClick={() => (select({ kind: "resident", id: q.agent_id }), close())} aria-label={`Deliver it to ${r.first_name}`}>
                     Deliver
                   </Button>
                 ) : null}
@@ -289,7 +292,14 @@ function TownPage() {
             return (
               <li key={l.level} className={`flex items-center gap-3 rounded-3xl px-4 py-3 ${current ? "bg-sun/25 ring-2 ring-sun" : "bg-[var(--panel)]"}`}>
                 <span className={`flex size-10 items-center justify-center rounded-full font-display text-lg font-bold ${reached ? "bg-sun text-[#2a2838]" : "bg-[var(--panel-2)] text-[var(--muted)]"}`}>
-                  {reached ? l.level : <Lock size={18} weight="bold" aria-label="Locked" />}
+                  {reached ? (
+                    l.level
+                  ) : (
+                    <>
+                      <Lock size={18} weight="bold" aria-hidden="true" />
+                      <span className="sr-only">Locked</span>
+                    </>
+                  )}
                 </span>
                 <div className="flex-1">
                   <p className="font-display text-lg font-bold">{l.name}</p>
@@ -297,7 +307,12 @@ function TownPage() {
                     From {formatNumber(l.points)} points · unlocks {unlocks} {unlocks === 1 ? "item" : "items"}
                   </p>
                 </div>
-                {current ? <Star size={22} weight="fill" color="#f2a33a" aria-label="You are here" /> : null}
+                {current ? (
+                  <>
+                    <Star size={22} weight="fill" color="#f2a33a" aria-hidden="true" />
+                    <span className="sr-only">The town is here</span>
+                  </>
+                ) : null}
               </li>
             );
           })}

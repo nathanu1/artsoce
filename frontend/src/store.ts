@@ -14,6 +14,7 @@ export interface Toast {
   title: string;
   body?: string;
   theme?: string;
+  until: number; // Date.now() when it hides by itself (paused while hovered or focused)
 }
 
 export interface Bubble {
@@ -50,6 +51,7 @@ interface TownState {
   toasts: Toast[];
   focus: { tile: Tile; at: number } | null;
   follow: string | null;
+  look: boolean; // the "Look Around" list of nearby things
   // build mode
   draft: Draft;
   tool: BuildTool;
@@ -69,11 +71,12 @@ interface TownState {
   openNotebook: (tab?: NotebookTab) => void;
   closeNotebook: () => void;
   setChat: (id: string | null) => void;
-  toast: (t: Omit<Toast, "id">) => void;
+  toast: (t: Omit<Toast, "id" | "until">) => void;
   dismiss: (id: number) => void;
   addPending: (seq: number, kind: string, agent?: string) => void;
   focusOn: (tile: Tile) => void;
   setFollow: (id: string | null) => void;
+  setLook: (open: boolean) => void;
   setBuild: (patch: Partial<Pick<TownState, "draft" | "tool" | "catalogId" | "templateId" | "rot" | "paint" | "hover" | "check" | "picked">>) => void;
   resetBuild: () => void;
 }
@@ -105,6 +108,7 @@ export const useTown = create<TownState>((set, get) => ({
   toasts: [],
   focus: null,
   follow: null,
+  look: false,
   draft: emptyDraft(),
   tool: "select",
   catalogId: null,
@@ -125,7 +129,7 @@ export const useTown = create<TownState>((set, get) => ({
     const bubbles = { ...s.bubbles };
     const pending = { ...s.pending };
     const conversations = reset ? [] : [...s.conversations];
-    const toasts: Omit<Toast, "id">[] = [];
+    const toasts: Omit<Toast, "id" | "until">[] = [];
     const now = performance.now();
     const content = s.info?.content;
     const motifName = (id: unknown) => content?.motifs.find((m) => m.id === id)?.name ?? "a motif";
@@ -218,19 +222,20 @@ export const useTown = create<TownState>((set, get) => ({
   },
 
   select: (selection) => set({ selection, chatWith: selection?.kind === "resident" ? get().chatWith : null }),
-  setMode: (mode) => set({ mode, selection: null, chatWith: null, notebook: { ...get().notebook, open: false } }),
+  setMode: (mode) => set({ mode, selection: null, chatWith: null, look: false, notebook: { ...get().notebook, open: false } }),
   openNotebook: (tab) => set({ notebook: { open: true, tab: tab ?? get().notebook.tab } }),
   closeNotebook: () => set({ notebook: { ...get().notebook, open: false } }),
   setChat: (chatWith) => set({ chatWith }),
   toast: (t) => {
     const id = ++toastId;
-    set({ toasts: [...get().toasts, { ...t, id }].slice(-4) });
-    window.setTimeout(() => get().dismiss(id), t.tone === "level" ? 6500 : 4500);
+    const ttl = t.tone === "warn" ? 9000 : t.tone === "level" ? 6500 : 4500;
+    set({ toasts: [...get().toasts, { ...t, id, until: Date.now() + ttl }].slice(-4) });
   },
   dismiss: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
   addPending: (seq, kind, agent) => set({ pending: { ...get().pending, [seq]: { kind, agent } } }),
   focusOn: (tile) => set({ focus: { tile, at: performance.now() } }),
   setFollow: (follow) => set({ follow }),
+  setLook: (look) => set({ look }),
   setBuild: (patch) => set(patch),
   resetBuild: () => set({ draft: emptyDraft(), tool: "select", catalogId: null, templateId: null, rot: 0, paint: null, hover: null, check: null, picked: null }),
 }));
