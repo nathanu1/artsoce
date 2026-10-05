@@ -90,6 +90,35 @@ class Zone(_M):
     rect: tuple[int, int, int, int]  # x0, y0, x1, y1 inclusive
 
 
+class Look(_M):
+    shirt: str
+    pants: str = "#4A5160"
+    hair: str
+    hair_style: Literal["short", "long", "bun", "curly", "bob", "spiky", "bald"] = "short"
+    skin: str
+    accessory: Literal["none", "glasses", "apron", "beanie", "scarf", "bow", "headphones", "cap"] = "none"
+
+
+_SHIRTS = ["#E8735F", "#3BA7A0", "#7BAF6E", "#4E8FD8", "#C783C9", "#F0B44C", "#D45D5D", "#5FB7D9", "#9C83D6", "#E39A4C", "#6DBA9A", "#D6739B"]
+_HAIRS = ["#2B1D1A", "#3A2522", "#5A3A26", "#7A5534", "#B07A3E", "#E2C27A", "#D9D4CC", "#1F1715", "#8C4A2F"]
+_SKINS = ["#F2CDB0", "#EBC2A2", "#E2B08C", "#D9A57E", "#C98E6A", "#B98060", "#9C6B4E", "#7E5440"]
+_STYLES = ["short", "long", "bun", "curly", "bob", "spiky"]
+_ACCESSORIES = ["none", "none", "glasses", "scarf", "beanie", "bow", "cap"]
+
+
+def default_look(agent_id: str) -> Look:
+    import hashlib
+
+    h = hashlib.sha256(agent_id.encode()).digest()
+    return Look(
+        shirt=_SHIRTS[h[0] % len(_SHIRTS)],
+        hair=_HAIRS[h[1] % len(_HAIRS)],
+        skin=_SKINS[h[2] % len(_SKINS)],
+        hair_style=_STYLES[h[3] % len(_STYLES)],  # type: ignore[arg-type]
+        accessory=_ACCESSORIES[h[4] % len(_ACCESSORIES)],  # type: ignore[arg-type]
+    )
+
+
 class PulseLevel(_M):
     level: int
     name: str
@@ -109,6 +138,7 @@ class GameContent(_M):
     points: dict[str, int]
     friendship: dict[str, int]
     zones: list[Zone] = Field(default_factory=list)
+    looks: dict[str, Look] = Field(default_factory=dict)
     ground_objects: list[str] = Field(default_factory=lambda: ["garden"])
     ground_min_tiles: int = 4
 
@@ -195,6 +225,9 @@ class GameContent(_M):
     def motifs_for(self, theme: str, source: str) -> list[Motif]:
         return [m for m in self.motifs if m.theme == theme and m.source == source]
 
+    def look(self, agent_id: str) -> Look:
+        return self.looks.get(agent_id) or default_look(agent_id)
+
     def level_for(self, points: int) -> PulseLevel:
         return [lv for lv in self.levels if lv.points <= points][-1]
 
@@ -206,8 +239,11 @@ def load_content(directory: str | Path = "configs/game") -> GameContent:
     d = Path(directory)
     d = d if d.is_absolute() else repo_path(str(d))
     data: dict[str, Any] = {}
-    for name in ("affinities.yaml", "motifs.yaml", "catalog.yaml", "pulse.yaml", "town.yaml"):
-        part = yaml.safe_load((d / name).read_text()) or {}
+    for name in ("affinities.yaml", "motifs.yaml", "catalog.yaml", "pulse.yaml", "town.yaml", "residents.yaml"):
+        path = d / name
+        if not path.exists() and name == "residents.yaml":
+            continue
+        part = yaml.safe_load(path.read_text()) or {}
         for k, v in part.items():
             key = "themes" if k == "themes" else k
             if key in data:

@@ -20,6 +20,9 @@ class SimClock:
     def now(self) -> datetime:
         return self.start + timedelta(seconds=self.step * self.seconds_per_step)
 
+    def time_at(self, step: int) -> datetime:
+        return self.start + timedelta(seconds=step * self.seconds_per_step)
+
     def advance(self, steps: int = 1) -> datetime:
         self.step += steps
         return self.now

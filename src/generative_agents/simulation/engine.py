@@ -324,36 +324,57 @@ class Simulation:
         steps = 0
         status = RunStatus.RUNNING
         try:
-            if not self.initialized():
-                self.initialize()
-            self.check_scenario_unchanged()
-            self.rt.budget.restore(self.db.get_meta("budget"))
-            self.rt.ledger.reset_counts(self.clock.step - 1)
-            self.db.set_meta("status", RunStatus.RUNNING.value)
-            self.db.commit()
-            timed = self._timed_snapshots()
+            self.begin()
             while self.clock.now < end and (max_steps is None or steps < max_steps):
-                due = [name for name, t in timed if t <= self.clock.now and name not in self.snapshots()]
-                if due:
-                    self._checkpoint(note="snapshot")
-                    for name in due:
-                        self.snapshot(name)
-                self.step()
+                self.advance()
                 steps += 1
-                if self.clock.step % self.cfg.output.checkpoint_every_steps == 0:
-                    self._checkpoint()
                 if progress is not None:
                     progress(self.clock.step, self.clock.now)
-            status = RunStatus.COMPLETED if self.clock.now >= self.cfg.scenario.end else RunStatus.INTERRUPTED
-            self._checkpoint(note="stopped")
-            if status == RunStatus.COMPLETED and "final" in self.cfg.output.snapshots:
-                self.snapshot("final")
+            status = self.wind_down()
         except RunStopped as stop:
             status = stop.status
             self._abort(stop.status, stop.detail)
         except KeyboardInterrupt:
             status = RunStatus.INTERRUPTED
             self._abort(status, "interrupted by user")
+        return self.finish(status)
+
+    # The three pieces of ``run``, also used by the live game session to step one at a time.
+    def begin(self) -> None:
+        """Initialize if needed and prepare to step (resume-safe). May raise ``RunStopped``."""
+
+        if not self.initialized():
+            self.initialize()
+        self.check_scenario_unchanged()
+        self.rt.budget.restore(self.db.get_meta("budget"))
+        self.rt.ledger.reset_counts(self.clock.step - 1)
+        self.db.set_meta("status", RunStatus.RUNNING.value)
+        self.db.commit()
+        self._timed = self._timed_snapshots()
+
+    def advance(self) -> StepReport:
+        """One step, with any due timed snapshot before it and a periodic checkpoint after it."""
+
+        due = [name for name, t in getattr(self, "_timed", []) if t <= self.clock.now and name not in self.snapshots()]
+        if due:
+            self._checkpoint(note="snapshot")
+            for name in due:
+                self.snapshot(name)
+        rep = self.step()
+        if self.clock.step % self.cfg.output.checkpoint_every_steps == 0:
+            self._checkpoint()
+        return rep
+
+    def wind_down(self) -> RunStatus:
+        """Checkpoint where the run stopped; take the final snapshot if the scenario is over."""
+
+        status = RunStatus.COMPLETED if self.clock.now >= self.cfg.scenario.end else RunStatus.INTERRUPTED
+        self._checkpoint(note="stopped")
+        if status == RunStatus.COMPLETED and "final" in self.cfg.output.snapshots:
+            self.snapshot("final")
+        return status
+
+    def finish(self, status: RunStatus) -> str:
         self.db.set_meta("status", status.value)
         self.db.commit()
         self.write_manifest()

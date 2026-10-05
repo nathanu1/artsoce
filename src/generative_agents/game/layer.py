@@ -76,11 +76,16 @@ class GameLayer:
 
     # ================================================================== engine hooks
     def before_step(self, now: datetime) -> None:
-        if not self.store.kv.get("granted_start"):
-            self._grant_start(now)
+        self.ensure_started(now)
         self.apply_due(now)
         if self.cfg.auto_requests:
             self._auto_request(now)
+
+    def ensure_started(self, now: datetime) -> None:
+        """Hand out the starting motifs once, before the first action of the run."""
+
+        if not self.store.kv.get("granted_start"):
+            self._grant_start(now)
 
     def apply_due(self, now: datetime) -> int:
         """Apply logged player actions due at the current step (also used while paused)."""
@@ -636,15 +641,27 @@ class GameLayer:
             out[aid] = {"tile": tuple(st.tile) if st.tile else None, "path": [tuple(t) for t in (st.action.path or [])], "target": st.action.address}
         return out
 
-    def validate_build(self, ops: list[dict[str, Any]]) -> dict[str, Any]:
-        """Check a batch of build operations without changing anything."""
+    def validate_build(
+        self,
+        ops: list[dict[str, Any]],
+        *,
+        snapshot: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Check a batch of build operations without changing anything.
 
-        placed = self.store.items()
+        ``snapshot`` (items, agents, requests, theme counts, level) lets the interface validate
+        from another thread against the last published state; the engine re-validates every
+        build when it applies it.
+        """
+
+        snap = snapshot or self.build_snapshot()
+        placed = [PlacedItem.from_json(d) if isinstance(d, dict) else d for d in snap["items"]]
+        agents = snap["agents"]
         by_id = {p.id: p for p in placed}
         drafts: list[Draft] = []
         removing: set[str] = set()
         problems: list[str] = []
-        busy = {p.id for p in placed for a in self.agent_positions().values() if a.get("target") == p.address}
+        busy = {p.id for p in placed for a in agents.values() if a.get("target") == p.address}
         for op in ops:
             kind = op.get("op")
             if kind == "place":
@@ -669,7 +686,7 @@ class GameLayer:
                         problems.append(f"unknown paint {op.get('paint')}")
             else:
                 problems.append(f"unknown build operation {kind!r}")
-        verdicts = self.editor.validate(drafts, placed=placed, removing=removing, agents=self.agent_positions(), level=self.level())
+        verdicts = self.editor.validate(drafts, placed=placed, removing=removing, agents=agents, level=int(snap["level"]))
         cost: dict[str, int] = {}
         for d in drafts:
             if d.item_id is None:
@@ -679,7 +696,7 @@ class GameLayer:
         for rid in removing:
             for t, n in self.content.item(by_id[rid].catalog_id).cost.items():
                 refund[t] = refund.get(t, 0) + n
-        have = self.theme_counts()
+        have = snap["counts"]
         net = {t: cost.get(t, 0) - refund.get(t, 0) for t in set(cost) | set(refund)}
         short = {t: n - have.get(t, 0) for t, n in net.items() if n > have.get(t, 0)}
         if short:
@@ -690,14 +707,24 @@ class GameLayer:
             "verdicts": [v.to_json() for v in verdicts],
             "cost": cost,
             "refund": refund,
-            "feedback": self.feedback(drafts, verdicts),
+            "feedback": self.feedback(drafts, verdicts, placed, snap["requests"]),
         }
 
-    def feedback(self, drafts: list[Draft], verdicts: list[Any]) -> list[dict[str, Any]]:
+    def build_snapshot(self) -> dict[str, Any]:
+        """What build validation needs, read on the engine thread."""
+
+        return {
+            "items": self.store.items(),
+            "agents": self.agent_positions(),
+            "requests": self.store.requests(),
+            "counts": self.theme_counts(),
+            "level": self.level(),
+        }
+
+    def feedback(self, drafts: list[Draft], verdicts: list[Any], items: list[PlacedItem], requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Affinity feedback for the player: the room's themes, who loves them, which requests fit."""
 
         out = []
-        items = self.store.items()
         for d, v in zip(drafts, verdicts, strict=True):
             item = self.content.item(d.catalog_id)
             entry: dict[str, Any] = {"theme": item.theme, "arena": v.arena}
@@ -709,9 +736,7 @@ class GameLayer:
                 entry["room_theme"] = self.aff.top(room)
                 entry["harmony"] = bool(d.paint and self.content.paint(d.paint).theme == item.theme)
                 entry["loved_by"] = [aid for aid, r in self.residents.items() if item.theme in r["loves"]]
-                entry["fulfils"] = [
-                    r["id"] for r in self.store.requests() if r["status"] == "open" and r["theme"] == item.theme and r["place_address"] == v.arena
-                ]
+                entry["fulfils"] = [r["id"] for r in requests if r["status"] == "open" and r["theme"] == item.theme and r["place_address"] == v.arena]
             out.append(entry)
         return out
 

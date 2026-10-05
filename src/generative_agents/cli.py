@@ -495,6 +495,62 @@ def cmd_experiment(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_play(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+    except ImportError:
+        print("the town needs the viewer extra: pip install -e .[viewer]")
+        return 2
+    from .game.api import WEB, create_game_app
+    from .game.session import GameSession
+    from .simulation.engine import load_run_config, new_run_dir, save_config
+
+    if args.replay:
+        src = Path(args.replay)
+        cfg = load_run_config(src)
+        out = Path(args.run_dir) if args.run_dir else src.parent / f"{src.name}-replay-{datetime.now():%Y%m%d-%H%M%S}"
+        out.mkdir(parents=True, exist_ok=True)
+        save_config(cfg, out)
+        session = GameSession(cfg, out, replay_from=src, speed=args.speed, paused=args.paused)
+        where = f"replaying {src} (no model calls) into {out}"
+    elif args.resume:
+        run_dir = Path(args.resume)
+        cfg = load_run_config(run_dir, args.set)
+        session = GameSession(cfg, run_dir, speed=args.speed, paused=args.paused)
+        where = f"resuming {run_dir}"
+    else:
+        cfg = _cfg(args)
+        if not cfg.game.enabled:
+            print("this config does not enable the game layer; use configs/town_mock.yaml or configs/town_ollama.yaml (or --set game.enabled=true)")
+            return 2
+        if not _live_guard(cfg, args.yes):
+            return 2
+        run_dir = Path(args.run_dir) if args.run_dir else new_run_dir(cfg, args.run_id)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        save_config(cfg, run_dir)
+        session = GameSession(cfg, run_dir, speed=args.speed, paused=args.paused)
+        where = f"new town in {run_dir}"
+    if not (WEB / "index.html").exists():
+        print("note: the town interface is not built yet (cd frontend && npm install && npm run build); the API still runs")
+    session.start()
+    app = create_game_app(session)
+    url = f"http://{args.host}:{args.port}"
+    print(
+        f"{where}\nmodel: {cfg.providers.llm.kind}:{cfg.providers.llm.model} ({'MOCK' if cfg.run_mode == 'mock' else 'local, no API cost' if cfg.providers.llm.is_local() else cfg.run_mode})"
+    )
+    print(f"open {url} (town) or {url}/inspector (research inspector). Ctrl+C saves and stops.")
+    if args.open:
+        import webbrowser
+
+        webbrowser.open(url)
+    try:
+        uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+    finally:
+        session.stop()
+        print(f"saved. Continue with: ga play --resume {session.run_dir}   |   watch again: ga play --replay {session.run_dir}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -639,6 +695,20 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--execute", action="store_true")
     sp.add_argument("--yes", action="store_true")
     sp.set_defaults(func=cmd_experiment)
+
+    sp = sub.add_parser("play", help="the town game: live simulation with the storybook interface")
+    with_config(sp)
+    sp.add_argument("--run-id")
+    sp.add_argument("--run-dir")
+    sp.add_argument("--resume", metavar="RUN_DIR", help="continue a saved town")
+    sp.add_argument("--replay", metavar="RUN_DIR", help="watch a saved town again, without any model call")
+    sp.add_argument("--host", default="127.0.0.1")
+    sp.add_argument("--port", type=int, default=8080)
+    sp.add_argument("--speed", default="normal", choices=["slow", "normal", "fast", "max"])
+    sp.add_argument("--paused", action="store_true", help="start paused")
+    sp.add_argument("--open", action="store_true", help="open the browser")
+    sp.add_argument("--yes", action="store_true", help="confirm a paid (non-local) model")
+    sp.set_defaults(func=cmd_play)
 
     sp = sub.add_parser("serve", help="local read-only viewer and inspector")
     sp.add_argument("--run-dir", required=True)

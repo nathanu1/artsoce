@@ -1,0 +1,12 @@
+# How residents look in the town view (an extension; purely visual). Residents without an
+# entry get a deterministic look from their id. hair_style: short | long | bun | curly | bob |
+# spiky | bald. accessory: none | glasses | apron | beanie | scarf | bow | headphones | cap.
+looks:
+  isabella_rodriguez: {shirt: "#E8735F", pants: "#5B4B6B", hair: "#3A2522", hair_style: bun, skin: "#D9A57E", accessory: apron}
+  maria_lopez: {shirt: "#3BA7A0", pants: "#3D4A63", hair: "#2B1D1A", hair_style: long, skin: "#C98E6A", accessory: headphones}
+  klaus_mueller: {shirt: "#7BAF6E", pants: "#4A5568", hair: "#E2C27A", hair_style: short, skin: "#F2CDB0", accessory: glasses}
+  wolfgang_schulz: {shirt: "#4E8FD8", pants: "#3B3F4A", hair: "#7A5534", hair_style: spiky, skin: "#F0C9A8", accessory: none}
+  sam_moore: {shirt: "#A2794D", pants: "#4B4B4B", hair: "#D9D4CC", hair_style: bald, skin: "#E8B996", accessory: cap}
+  jennifer_moore: {shirt: "#C783C9", pants: "#4F4560", hair: "#B8B0A8", hair_style: bob, skin: "#EBC2A2", accessory: scarf}
+  arthur_burton: {shirt: "#D45D5D", pants: "#33363F", hair: "#5A3A26", hair_style: short, skin: "#E2B08C", accessory: none}
+  ayesha_khan: {shirt: "#F0B44C", pants: "#45505E", hair: "#1F1715", hair_style: long, skin: "#B98060", accessory: bow}
