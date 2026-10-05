@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import yaml
 
 from generative_agents.cognition.dialogue import DialogueEngine, Side
@@ -9,6 +11,7 @@ from generative_agents.cognition.reaction import ReactionEngine
 from generative_agents.cognition.reflection import ReflectionEngine
 from generative_agents.cognition.summary import SummaryService
 from generative_agents.evaluation.experiment import Protocol, _permutation_p, estimate, execute, summarize
+from generative_agents.evaluation.plots import strip_chart
 from generative_agents.providers.mock import MockLLM
 from generative_agents.schemas import MemoryOrigin
 from helpers import ISABELLA, KLAUS, T, make_stack
@@ -79,9 +82,26 @@ def test_execute_reports_every_run_and_missing_outcomes(tmp_path):
     res = execute(proto)
     assert len(res["rows"]) == 4 and all(r["status"] == "completed" for r in res["rows"])
     assert all(r["invited_attendance_rate"] is None for r in res["rows"])  # the party window was never simulated
-    assert (tmp_path / "experiments" / "tiny" / "report.md").read_text().startswith("# Experiment: tiny")
+    assert {r["mode"] for r in res["rows"]} == {"mock"}
+    root = tmp_path / "experiments" / "tiny"
+    report = (root / "report.md").read_text()
+    assert report.startswith("# Experiment: tiny") and "**MOCK RUNS.**" in report and "_Run modes: mock × 4._" in report
+    assert "[full-s1](full-s1/exports/evaluation/report.md)" in report and (root / "full-s1" / "exports" / "evaluation" / "report.md").exists()
+    assert "## By condition" in report and "| **Attendance among invited guests** | n/a | n/a |" in report and "| Cost (USD) | unpriced | unpriced |" in report
+    for k in proto.primary_outcomes:
+        assert (root / f"outcome_{k}.svg").exists() and f"(outcome_{k}.svg)" in report
+    assert "mode" in (root / "runs.csv").read_text().splitlines()[0].split(",")
     summ = res["summary"]
     assert summ["unit"] == "run" and set(summ["conditions"]) == {"full", "no_reflection"}
+
+
+def test_strip_chart_draws_every_run_on_a_fixed_axis():
+    svg = strip_chart("recall", {"full": [("a", 1.0), ("b", 1.0), ("c", 0.6)], "no_reflection": [("d", 0.8)]})
+    assert svg.count("<circle") == 4 and "full (n=3)" in svg and "no_reflection (n=1)" in svg
+    cx = [float(x) for x in re.findall(r'<circle cx="([0-9.]+)"', svg)]
+    assert cx[0] != cx[1]  # equal values are spread sideways, not hidden
+    assert ">0.87<" in svg and ">0.80<" in svg  # condition means
+    assert ">0<" in svg and ">1<" in svg  # the axis stays 0..1 for rates
 
 
 def test_run_level_summary_statistics():

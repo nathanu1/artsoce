@@ -470,6 +470,18 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_prompt_examples(args: argparse.Namespace) -> int:
+    from .prompt_examples import write_prompt_examples
+
+    out = write_prompt_examples([Path(d) for d in args.run_dir], args.out)
+    print(f"wrote {len(out['tasks'])} task files and README.md to {out['dir']}")
+    if out["without_examples"]:
+        print("no successful call recorded for: " + ", ".join(out["without_examples"]))
+        print("  (interview, awareness and judge come from ga interview / ga evaluate / ga judge on the run;")
+        print("   seed_thought and conversation_inferences only run with their compatibility settings)")
+    return 0
+
+
 def cmd_import_scenario(args: argparse.Namespace) -> int:
     from .scenario.importer import import_official
 
@@ -589,6 +601,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("export", help="JSONL/CSV/Markdown exports of a run")
     sp.add_argument("--run-dir", required=True)
     sp.set_defaults(func=cmd_export)
+
+    sp = sub.add_parser("prompt-examples", help="per-task input/output examples from recorded call ledgers")
+    sp.add_argument("--run-dir", required=True, nargs="+", help="one or more runs; each task's example comes from the first run that has one")
+    sp.add_argument("--out", default=None, help="default: RUN_DIR/exports/prompt_examples")
+    sp.set_defaults(func=cmd_prompt_examples)
 
     sp = sub.add_parser("import-scenario", help="convert the official Smallville data into scenario files")
     sp.add_argument("--source", required=True, help="path to a joonspk-research/generative_agents checkout")

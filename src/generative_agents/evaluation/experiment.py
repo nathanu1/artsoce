@@ -24,6 +24,7 @@ import json
 import random
 import statistics
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
@@ -33,8 +34,10 @@ import yaml
 
 from ..config import apply_overrides, load_raw, repo_path
 from .interview import write_csv
+from .plots import strip_chart
 
 PRIMARY = ("supported_party_recall", "supported_candidacy_recall", "invited_attendance_rate")
+SECONDARY = ("invited", "exposed_party", "unsupported_claims", "calls", "input_tokens", "output_tokens", "cost_usd", "runtime_s")
 
 
 @dataclass
@@ -147,7 +150,7 @@ def execute(protocol: Protocol, *, provider_factory: Any = None, embedding_facto
         cfg = protocol.config_for(run)
         run_dir = root / run["run_id"]
         t0 = time.time()
-        row: dict[str, Any] = {"condition": run["condition"], "seed": run["seed"], "run_id": run["run_id"], "run_dir": str(run_dir)}
+        row: dict[str, Any] = {"condition": run["condition"], "seed": run["seed"], "run_id": run["run_id"], "run_dir": str(run_dir), "mode": cfg.run_mode}
         try:
             run_dir.mkdir(parents=True, exist_ok=True)
             if not (run_dir / "config.yaml").exists():
@@ -162,6 +165,7 @@ def execute(protocol: Protocol, *, provider_factory: Any = None, embedding_facto
             sim.close()
             row["status"] = status
             manifest = json.loads((run_dir / "manifest.json").read_text())
+            row["mode"] = manifest.get("mode", row["mode"])
             row["stop_detail"] = (manifest.get("stop_detail") or {}).get("detail")
             if status == "completed":
                 ev = evaluate_run(
@@ -183,7 +187,10 @@ def execute(protocol: Protocol, *, provider_factory: Any = None, embedding_facto
         if progress:
             progress(row)
     summary = summarize(rows, protocol)
-    write_csv(root / "runs.csv", rows, list(rows[0].keys()) if rows else [])
+    write_csv(root / "runs.csv", rows, list(dict.fromkeys(k for r in rows for k in r)))
+    for k in protocol.primary_outcomes:
+        pts = {c: [(r["run_id"], r[k]) for r in rows if r["condition"] == c and r.get(k) is not None] for c in protocol.conditions}
+        (root / f"outcome_{k}.svg").write_text(strip_chart(k.replace("_", " "), pts))
     (root / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
     (root / "report.md").write_text(render(protocol, rows, summary))
     return {"rows": rows, "summary": summary, "dir": str(root)}
@@ -220,7 +227,7 @@ def summarize(rows: list[dict[str, Any]], protocol: Protocol) -> dict[str, Any]:
     for c in conds:
         rs = [r for r in rows if r["condition"] == c]
         out["conditions"][c] = {"runs": len(rs), "completed": len([r for r in rs if r.get("status") == "completed"]), "outcomes": {}}
-        for k in (*protocol.primary_outcomes, "unsupported_claims", "calls", "input_tokens", "output_tokens", "runtime_s"):
+        for k in (*protocol.primary_outcomes, *SECONDARY):
             vals = [r[k] for r in rs if r.get(k) is not None]
             out["conditions"][c]["outcomes"][k] = (
                 {
@@ -251,29 +258,70 @@ def summarize(rows: list[dict[str, Any]], protocol: Protocol) -> dict[str, Any]:
     return out
 
 
+LABELS = {
+    "supported_party_recall": "Party recall (supported)",
+    "supported_candidacy_recall": "Candidacy recall (supported)",
+    "invited_attendance_rate": "Attendance among invited guests",
+    "invited": "Invited guests",
+    "exposed_party": "Agents exposed to the party",
+    "unsupported_claims": "Unsupported claims",
+    "calls": "Model calls",
+    "input_tokens": "Input tokens",
+    "output_tokens": "Output tokens",
+    "cost_usd": "Cost (USD)",
+    "runtime_s": "Runtime (s)",
+}
+
+
+def _num(v: float) -> str:
+    return f"{v:,.0f}" if abs(v) >= 1000 else f"{v:g}"
+
+
+def _cell(stats: dict[str, Any], key: str) -> str:
+    if not stats.get("n"):
+        return "unpriced" if key == "cost_usd" else "n/a"
+    sd = f" ± {_num(stats['sd'])}" if stats.get("sd") is not None else ""
+    return f"{_num(stats['mean'])}{sd} (median {_num(stats['median'])}; {_num(stats['min'])}–{_num(stats['max'])}; n={stats['n']})"
+
+
 def render(protocol: Protocol, rows: list[dict[str, Any]], summary: dict[str, Any]) -> str:
-    modes = sorted({str(r.get("mode", "")) for r in rows})
+    modes = Counter(str(r.get("mode") or "unknown") for r in rows)
+    not_live = sorted(set(modes) - {"live"})
     lines = [f"# Experiment: {protocol.name}", "", protocol.question or "", ""]
-    cfg = protocol.config_for(protocol.runs()[0]) if rows else None
-    if cfg is not None and cfg.run_mode != "live":
-        lines += [f"> **{cfg.run_mode.upper()} RUNS.** These numbers exercise the pipeline with the offline mock; they say nothing about reflection.", ""]
+    if not_live:
+        source = " with the offline mock" if "mock" in modes else ""
+        lines += [f"> **{' + '.join(m.upper() for m in not_live)} RUNS.** These numbers exercise the pipeline{source}; they say nothing about reflection.", ""]
     lines += [
         "Conditions differ only in `architecture.reflection`. Runs are matched by seed; a hosted model does not reproduce identical samples, so matching is of the initial world, not of the randomness.",
+        "Each run links to its evaluation report (diffusion and relationship plots, attendance, representative failures).",
         "",
         "| Run | Condition | Seed | Status | Party recall (supported) | Candidacy recall (supported) | Invited who attended | Unsupported claims | Calls | Runtime (s) |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
         inv = f"{r.get('invited_attended')}/{r.get('invited')}" if r.get("invited") is not None else "n/a"
+        has_report = (Path(r["run_dir"]) / "exports" / "evaluation" / "report.md").exists()
+        name = f"[{r['run_id']}]({r['run_id']}/exports/evaluation/report.md)" if has_report else r["run_id"]
         lines.append(
-            f"| {r['run_id']} | {r['condition']} | {r['seed']} | {r.get('status')} | {r.get('supported_party_recall')} | {r.get('supported_candidacy_recall')} | {inv} | {r.get('unsupported_claims')} | {r.get('calls')} | {r.get('runtime_s')} |"
+            f"| {name} | {r['condition']} | {r['seed']} | {r.get('status')} | {r.get('supported_party_recall')} | {r.get('supported_candidacy_recall')} | {inv} | {r.get('unsupported_claims')} | {r.get('calls')} | {r.get('runtime_s')} |"
         )
+    conds = list(protocol.conditions)
+    lines += ["", "## By condition", "", "| Outcome | " + " | ".join(conds) + " |", "| --- |" + " --- |" * len(conds)]
+    for k in (*protocol.primary_outcomes, *SECONDARY):
+        label = LABELS.get(k, k)
+        label = f"**{label}**" if k in protocol.primary_outcomes else label
+        cells = [_cell(summary["conditions"].get(c, {}).get("outcomes", {}).get(k, {}), k) for c in conds]
+        lines.append(f"| {label} | " + " | ".join(cells) + " |")
+    lines += ["", "Mean ± SD (median; range; runs with a value). Primary outcomes, fixed in the protocol before running, are in bold."]
     lines += ["", "## Comparisons (exploratory)", ""]
     for k, v in summary.get("comparisons", {}).items():
         lines.append(
             f"* **{k}**: {v['difference']} = {v['mean_difference']} (bootstrap 95% CI {v['bootstrap_95ci']}, exact permutation p = {v['permutation_p']}, n = {v['n']})"
         )
+    plots = [k for k in protocol.primary_outcomes if (protocol.root() / f"outcome_{k}.svg").exists()]
+    if plots:
+        lines += ["", "One dot per run; the bar is the condition mean.", ""] + [f"![{LABELS.get(k, k)}](outcome_{k}.svg)" for k in plots]
     if summary.get("excluded"):
         lines += ["", "## Runs without outcomes", ""] + [f"* {e['run_id']}: {e['status']} — {e['reason']}" for e in summary["excluded"]]
-    lines += ["", "_modes: " + ", ".join(m for m in modes if m) + "_", ""]
+    lines += ["", "_Run modes: " + ", ".join(f"{m} × {n}" for m, n in sorted(modes.items())) + "._", ""]
     return "\n".join(lines)

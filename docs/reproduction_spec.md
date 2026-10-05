@@ -230,6 +230,7 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 | O-3 | Budgets: calls, input and output tokens, runtime, optional cost; exhaustion checkpoints instead of fabricating. | prompt §11 | E | `simulation/budget.py`; engine rollback | `test_gateway.py::test_budget_ceiling_stops_before_the_call`, `test_engine.py::test_budget_exhaustion_rolls_back_and_resume_finishes` | Cost stays "unpriced" unless a price table is configured (`configs/pricing.yaml`, from the published price page). |
 | O-4 | Anthropic adapter; deterministic mock; optional OpenAI adapter; embeddings backends with recorded model and dimensions. | prompt §2 | E | `providers/{anthropic_provider, mock, openai_provider, embeddings}.py` | `test_gateway.py::test_mock_provider_is_deterministic` | Mock embeddings are test fixtures only. **The live adapters have not been exercised against the real APIs** (no credentials). |
 | O-5 | Run manifest. | prompt §11 | E | `Simulation.write_manifest` | `test_engine.py::test_manifest_labels_mock_runs` | |
+| O-6 | Small input/output examples and raw-output traces for every task, so each can be inspected or changed on its own. | prompt §2 | E | `prompt_examples.py`, `ga prompt-examples`; committed set in `prompts/examples/` | `test_prompt_examples.py::test_examples_show_exact_calls_repairs_and_their_source`, `::test_committed_examples_match_the_current_templates` | One page per template: source, information scope, output schema, the smallest successful call exactly as sent and received, and a repaired exchange when the run had one. The committed set comes from offline runs (MOCK outputs: format only). The full trace of a run is `model_calls.jsonl` (`ga export`). |
 
 ### 2R. Reflection extension
 
@@ -237,7 +238,7 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 | --- | --- | --- | --- | --- | --- | --- |
 | R-1 | Full architecture vs reflection disabled *throughout* independent simulations from identical authored worlds. | prompt §10 | X | `evaluation/experiment.py`, `configs/experiment_reflection*.yaml` | `test_experiment.py::test_protocol_matches_seeds_and_plans_without_calling_models`, `::test_execute_reports_every_run_and_missing_outcomes` | |
 | R-2 | Disable every reflection-generating path (trigger, questions, insights, post-conversation inferences); keep observational transcript summaries. | prompt §10 | X | `architecture.reflection: false` | `test_experiment.py::test_no_reflection_disables_every_reflective_path_but_keeps_transcript_summaries` | |
-| R-3 | Primary outcomes: supported event recall; attendance among invited guests. Report exposure, invitations, unsupported claims, calls, tokens, cost, runtime; include failed and truncated runs. | prompt §10 | X | `evaluation/experiment.py` | `test_experiment.py::test_run_level_summary_statistics` | Run is the unit of analysis; bootstrap interval and exact permutation test are exploratory. |
+| R-3 | Primary outcomes: supported event recall; attendance among invited guests. Report exposure, invitations, unsupported claims, calls, tokens, cost, runtime; include failed and truncated runs. | prompt §10 | X | `evaluation/experiment.py` | `test_experiment.py::test_run_level_summary_statistics`, `::test_execute_reports_every_run_and_missing_outcomes`, `::test_strip_chart_draws_every_run_on_a_fixed_axis` | Run is the unit of analysis; bootstrap interval and exact permutation test are exploratory. The report has a per-condition table (mean, SD, median, range), one-dot-per-run plots on a fixed axis, each run's mode, and links to each run's evaluation report. |
 
 ## 3. Paper vs released code: verified differences
 
@@ -310,7 +311,8 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
   sentence-transformers, or `mock-hash-256` test fixtures (lexical hashing, not semantic).
 * **D-3 Candidacy seed.** Jennifer Moore's clause removed under the default policy (A-5).
 * **D-4 Structured outputs.** Every task returns JSON validated against a schema. Prompt meaning and
-  information scope follow the paper and released templates; wording is versioned in `prompts/`.
+  information scope follow the paper and released templates; wording is versioned in `prompts/`,
+  with one recorded input/output example per template in `prompts/examples/` (O-6).
 * **D-5 Batched calls.** Action grounding returns the event triple, the in-use object state and an
   optional lasting condition in one call; the statements of one conversation, the items of one plan
   and an agent's seeds are each scored in one batched importance call. Each batch keeps per-item
@@ -320,7 +322,9 @@ Implementation paths are relative to `src/generative_agents/`; tests to `tests/`
 * **D-8 Population.** Pilot runs use documented subsets (`scenarios/pilot3`, `scenarios/pilot5`).
 * **D-9 Tick and targets.** Reference 10 s. Destination tiles are the nearest reachable tile of the
   chosen address, preferring free tiles; agents may share tiles while walking, as in the code.
-* **D-10 Viewer.** Simple shapes instead of the original art.
+* **D-10 Viewer.** Simple shapes instead of the original art. The front end is plain JavaScript
+  on a canvas, served by FastAPI, instead of the suggested Phaser/TypeScript: it needs no build
+  step and only plays recorded frames.
 * **D-11 Interviews.** Clones instead of the live process; matched-history design as in the paper.
 * **D-12 Emoji.** The emoji rendering of actions (p. 5) is not reproduced; the viewer shows text.
 * **D-13 Hourly schedule.** One validated call instead of 24 per-hour calls with diversity retries.
@@ -361,10 +365,12 @@ All seven milestones are implemented. What was actually run:
 
 | Check | Result |
 | --- | --- |
-| Test suite (`pytest`) | 145 tests pass offline (retrieval, gateway, reflection, summaries, planning, world, behavior scenarios, engine resume/replay/budget, scenario audit, interviews, metrics, statistics, exports, experiment runner, CLI and viewer API). |
+| Test suite (`pytest`) | 148 tests pass offline (retrieval, gateway, reflection, summaries, planning, world, behavior scenarios, engine resume/replay/budget, scenario audit, interviews, metrics, statistics, exports, experiment runner, prompt examples, CLI and viewer API). |
 | Scenario import | Re-importing the official checkout at `fe05a71` reproduces the committed scenario files byte for byte; the n25 audit is clean under the paper policy (party: Isabella only; candidacy: Sam only). |
 | Offline five-agent, two-day run (`configs/offline_pilot_2day.yaml`) | Completes in about a minute; evaluation, interviews (500 answers), blinded export and the viewer were exercised on it. MOCK. |
 | Offline 25-agent, two-day run | Completed in 6.6 minutes: 32,970 mock calls, about 17.9M estimated input tokens (real prompts, chars/4), 19,291 memories, 228 conversations, 3,615 reflection memories, about 0.5 GB on disk with snapshots. Evaluation took 44 s. MOCK: these numbers describe the pipeline's load, not agent behavior. |
+| Reflection extension, offline (`configs/experiment_reflection_mock.yaml`) | All 10 independent two-day runs (2 conditions × 5 seeds) completed, about 50 s each, and were evaluated and summarized at run level. MOCK: the numbers exercise the pipeline and say nothing about reflection. The live batch was not started. |
+| Prompt examples | One recorded input/output per template (21 of 21) in `prompts/examples/`, from an offline two-day run with its evaluation, interviews and judge, plus a short run with the two compatibility settings that `seed_thought` and `conversation_inferences` need. MOCK outputs. |
 | Replay | A recorded run replays to an identical state with zero model calls; a replay with a changed setting stops as diverged instead of calling a model. |
 | Resume | A run crashed mid-way and resumed reaches the same state as an uninterrupted run, paying for no call twice. |
 | Live API | **Not run.** No credentials were available. |

@@ -68,3 +68,44 @@ def network(title: str, nodes: list[str], edges: list[tuple[str, str]], *, direc
         out.append(f'<text x="{x:.1f}" y="{y + 19:.1f}" text-anchor="middle" fill="{INK}">{escape(n)}</text>')
     out.append("</svg>")
     return "\n".join(out)
+
+
+def strip_chart(title: str, groups: dict[str, list[tuple[str, float]]], *, lo: float = 0.0, hi: float = 1.0, width: int = 420, height: int = 240) -> str:
+    """One dot per run for each group, with the group mean as a short bar.
+
+    The axis is fixed (``lo``..``hi``, widened only if a value falls outside) so that a
+    difference between a handful of runs is not magnified by auto-scaling. Equal values are
+    spread sideways instead of being drawn on top of each other.
+    """
+
+    vals = [v for pts in groups.values() for _, v in pts]
+    lo, hi = min([lo, *vals]), max([hi, *vals])
+    span = (hi - lo) or 1.0
+    pad_l, pad_b, pad_t = 48, 30, 36
+    plot_w, plot_h = width - pad_l - 16, height - pad_t - pad_b
+    gw = plot_w / max(1, len(groups))
+
+    def y(v: float) -> float:
+        return pad_t + plot_h - plot_h * (v - lo) / span
+
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" font-family="IBM Plex Mono, monospace" font-size="11">']
+    out.append(f'<text x="{pad_l}" y="20" fill="{INK}" font-size="13">{escape(title)}</text>')
+    for tick in (lo, lo + span / 2, hi):
+        out.append(f'<line x1="{pad_l}" y1="{y(tick):.1f}" x2="{pad_l + plot_w}" y2="{y(tick):.1f}" stroke="{MUTED}" stroke-opacity="0.35"/>')
+        out.append(f'<text x="{pad_l - 6}" y="{y(tick) + 4:.1f}" text-anchor="end" fill="{MUTED}">{tick:g}</text>')
+    for gi, (name, pts) in enumerate(groups.items()):
+        cx = pad_l + gi * gw + gw / 2
+        color = COLORS[gi % len(COLORS)]
+        seen: dict[float, int] = {}
+        for label, v in pts:
+            k = seen.get(v, 0)
+            seen[v] = k + 1
+            dx = ((k + 1) // 2) * 9 * (1 if k % 2 else -1)
+            out.append(f'<circle cx="{cx + dx:.1f}" cy="{y(v):.1f}" r="4.5" fill="{color}" fill-opacity="0.8"><title>{escape(label)}: {v:g}</title></circle>')
+        if pts:
+            mean = sum(v for _, v in pts) / len(pts)
+            out.append(f'<line x1="{cx - gw * 0.3:.1f}" y1="{y(mean):.1f}" x2="{cx + gw * 0.3:.1f}" y2="{y(mean):.1f}" stroke="{INK}" stroke-width="2"/>')
+            out.append(f'<text x="{cx + gw * 0.3 + 4:.1f}" y="{y(mean) + 4:.1f}" fill="{INK}">{mean:.2f}</text>')
+        out.append(f'<text x="{cx:.1f}" y="{pad_t + plot_h + 18}" text-anchor="middle" fill="{INK}">{escape(name)} (n={len(pts)})</text>')
+    out.append("</svg>")
+    return "\n".join(out)

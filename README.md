@@ -14,8 +14,9 @@ Every setting is tagged as **paper**, **released code**, **engineering choice** 
 deviation.
 
 > **What has actually been validated.** All of it runs offline with a deterministic mock model
-> and hash embeddings: 145 tests pass, a five-agent and a 25-agent two-day simulation complete,
-> and evaluation, interviews, exports, replay and the viewer work on them. **No live model has
+> and hash embeddings: 148 tests pass, a five-agent and a 25-agent two-day simulation complete,
+> and evaluation, interviews, exports, replay, the viewer and a ten-run reflection experiment work
+> on them. **No live model has
 > been called** (no API credentials were available), so nothing here is evidence about how
 > Claude-driven agents behave. Mock runs are labeled MOCK everywhere; their outcomes are
 > structural demonstrations, never research results.
@@ -66,6 +67,7 @@ A six-hour smoke run takes about five seconds: `ga run --config configs/offline_
 | `ga experiment --protocol FILE [--measured-run DIR] [--execute] [--yes]` | Reflection extension: plans and projects usage by default; runs only with `--execute`. |
 | `ga serve --run-dir DIR [--experiment DIR]` | Local read-only viewer and inspector. |
 | `ga export --run-dir DIR` | JSONL events, transcripts, retrieval traces and model calls; CSV memories, plans and usage; Markdown run report. |
+| `ga prompt-examples --run-dir DIR [DIR ...] [--out DIR]` | One page per prompt template: source, information scope, output schema and the smallest recorded call exactly as sent and received (plus a repaired exchange, when there was one). |
 | `ga import-scenario --source CHECKOUT` / `ga audit-scenario` | Rebuild scenario files from the official data (byte-identical) and audit seeds, knowledge scoping, spawn tiles and places. |
 
 ## Configurations
@@ -132,7 +134,8 @@ perceive (square vision, same arena, attention bandwidth, retention)
 [`docs/walkthrough.md`](docs/walkthrough.md) follows one conversation through memory, retrieval,
 reflection and planning with real IDs and scores.
 [`docs/experiment_protocol.md`](docs/experiment_protocol.md) is the evaluation and experiment
-protocol.
+protocol. [`prompts/examples/`](prompts/examples/README.md) shows, for each of the 21 tasks, the
+exact text a model receives and the schema its answer must fill.
 
 ## Main differences from the paper and the released code
 
@@ -154,7 +157,7 @@ The full list, with sources, is in the spec (§3 and §6). In short:
 ## Tests
 
 ```bash
-pytest             # 145 tests, offline, about 20 seconds
+pytest             # 148 tests, offline, about 20 seconds
 ruff check src tests examples
 ```
 
@@ -167,6 +170,20 @@ constraints; the burning stove, occupied bathroom, empty fridge, nearby friend a
 scenarios; checkpoint/resume and replay equivalence; interview masks and side effects; toy
 examples for diffusion, density and attendance; budgets and failures. Tests prove structure, not
 believable behavior.
+
+One test checks that `prompts/examples/` matches the current templates. After changing a template,
+regenerate the examples (about two minutes):
+
+```bash
+rm -rf runs/examples-main runs/examples-compat
+ga run --config configs/offline_pilot_2day.yaml --run-id examples-main
+ga evaluate --run-dir runs/examples-main
+ga interview --run-dir runs/examples-main --protocol configs/interviews_reference.yaml
+ga judge --run-dir runs/examples-main --name appendix_b
+ga run --config configs/offline_smoke.yaml --run-id examples-compat \
+  --set scenario.seed_rendering=inner_thought_llm --set architecture.post_conversation_inferences=true
+rm -r prompts/examples && ga prompt-examples --run-dir runs/examples-main runs/examples-compat --out prompts/examples
+```
 
 ## Layout
 
@@ -181,6 +198,7 @@ src/generative_agents/   config, schemas, db, prompting, cli
   evaluation/            interviews, banks, diffusion, relationships, attendance, failures, stats, experiment
   viewer/                FastAPI app and static front end
 prompts/                 21 versioned prompt templates (front matter names the source of each)
+  examples/              one recorded input/output per template (MOCK outputs; see its README)
 scenarios/               imported Smallville data: smallville_n25, pilot3, pilot5
 configs/                 example configurations and the Appendix B question banks
 docs/                    reproduction spec, walkthrough, experiment protocol
