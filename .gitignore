@@ -1,0 +1,34 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+
+# Runtime outputs (runs, checkpoints, provider logs, caches)
+runs/
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.ga_cache/
+
+# Downloaded models and large local assets
+models/
+*.safetensors
+*.onnx
+
+# The paper PDF is supplied locally and checked by `ga doctor` (license: arXiv non-exclusive)
+docs/2304.03442v2.pdf
+
+# Frontend tooling
+node_modules/
+frontend/node_modules/

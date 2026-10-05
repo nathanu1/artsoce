@@ -1,0 +1,32 @@
+Generative Agents Lab
+=====================
+
+This project reimplements the architecture described in:
+
+  Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris,
+  Percy Liang, and Michael S. Bernstein. 2023. Generative Agents: Interactive
+  Simulacra of Human Behavior. UIST '23. arXiv:2304.03442v2.
+
+Third-party material derived from joonspk-research/generative_agents
+(commit fe05a71d3e4ed7d10bf68aa4eda6dd995ec070f4), Copyright 2023 Joon Sung Park,
+licensed under the Apache License, Version 2.0 (copy in
+third_party/generative_agents/LICENSE):
+
+  * scenarios/smallville_n25/ and scenarios/pilot*/: persona fields, history
+    statements and spatial-memory trees converted from
+    environment/frontend_server/storage/base_the_ville_n25/ and
+    base_the_ville_isabella_maria_klaus/, and agent_history_init_n25.csv /
+    agent_history_init_n3.csv. Changes: converted to YAML/JSON, split into
+    seed statements, and (under the default candidacy_seed_policy) one
+    statement removed for Jennifer Moore, as documented in
+    docs/reproduction_spec.md (A-5, D-3).
+  * scenarios/smallville_n25/map/: the_ville tile matrices and special-block
+    tables converted to a compact JSON form. Changes: format only.
+  * prompts/: several templates adapt the wording and information scope of the
+    released prompt templates (persona/prompt_template/v2, v3_ChatGPT) and the
+    prompts printed in the paper. Changes: restructured, versioned, and given
+    JSON output schemas.
+
+Not included: the game art (tilesets, character sprites) credited in the
+official README to PixyMoon, LimeZu and pipohi. Those assets carry their own
+terms; the viewer here draws simple shapes instead.
