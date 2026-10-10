@@ -480,7 +480,8 @@ class MockLLM:
                 return {"utterance": f"A {gift}? I love it, thank you so much!", "mood": "happy"}
             return {"utterance": f"Oh, a {gift}. That's kind of you, thank you.", "mood": "content"}
         if v.get("_delivery"):
-            return {"utterance": f"You made the {v['_delivery']}! It's exactly what I hoped for. Thank you!", "mood": "happy"}
+            wish = re.sub(r"^(a|an|the|some)\s+", "", str(v["_delivery"]).strip(), flags=re.IGNORECASE)
+            return {"utterance": f"You made the {wish}! It's exactly what I hoped for. Thank you!", "mood": "happy"}
         if any(w in said for w in ("hello", "hi ", "hey", "good morning", "good evening")) or said in ("hi", "hey"):
             status = (v.get("_status") or "").strip()
             line = f"Hi there! I'm {status}." if status else "Hi there!"

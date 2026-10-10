@@ -22,6 +22,7 @@ export function LookAround() {
   const info = useTown((s) => s.info)!;
   const game = useTown((s) => s.poll?.game);
   const setLook = useTown((s) => s.setLook);
+  const replay = useTown((s) => !!s.poll?.replay);
   const reduce = useReducedMotion();
   const first = useRef<HTMLButtonElement>(null);
   const opener = useRef<Element | null>(null);
@@ -114,9 +115,19 @@ export function LookAround() {
             {near.sparkles.map((s) => {
               const t = themeOf(s.theme);
               return (
-                <button key={s.id} ref={firstRef()} type="button" className={row} onClick={() => void collect(s.id)}>
+                <button
+                  key={s.id}
+                  ref={firstRef()}
+                  type="button"
+                  className={row}
+                  onClick={() => {
+                    if (!replay) return void collect(s.id);
+                    useTown.getState().focusOn(s.tile);
+                    setLook(false);
+                  }}
+                >
                   <Sparkle size={20} weight="fill" color={t?.color} aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate font-semibold">Collect a {t?.name ?? ""} sparkle</span>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{replay ? `Show the ${t?.name ?? ""} sparkle` : `Collect a ${t?.name ?? ""} sparkle`}</span>
                 </button>
               );
             })}

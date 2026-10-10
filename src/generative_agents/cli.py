@@ -551,6 +551,16 @@ def cmd_play(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_demo(args: argparse.Namespace) -> int:
+    from .game.export_demo import export_demo
+
+    res = export_demo(Path(args.run_dir), Path(args.out), frame_every=args.frames_every)
+    total = sum(res["bytes"].values())
+    print(f"wrote {res['frames']} frames, {res['states']} state changes and {res['events']} events to {res['out']} ({total / 1e6:.1f} MB, no model calls)")
+    print("serve it with the demo build: cd frontend && npm run build:demo, export into frontend/dist-demo, then python -m http.server -d frontend/dist-demo")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -709,6 +719,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--open", action="store_true", help="open the browser")
     sp.add_argument("--yes", action="store_true", help="confirm a paid (non-local) model")
     sp.set_defaults(func=cmd_play)
+
+    sp = sub.add_parser("export-demo", help="a recorded town as static files for the front end's demo build (no model calls)")
+    sp.add_argument("--run-dir", required=True, help="a run made with the town game")
+    sp.add_argument("--out", required=True, help="the folder of the demo build; data goes into OUT/demo")
+    sp.add_argument("--frames-every", type=int, default=1, help="keep every Nth frame (default: all)")
+    sp.set_defaults(func=cmd_export_demo)
 
     sp = sub.add_parser("serve", help="local read-only viewer and inspector")
     sp.add_argument("--run-dir", required=True)

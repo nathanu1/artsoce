@@ -148,40 +148,46 @@ export function ResidentCard({ id }: { id: string }) {
         />
       ) : null}
 
-      {replay ? null : (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button ref={chatBtn} tone="primary" icon={ChatCircleDots} onClick={() => setChat(chatting ? null : id)} disabled={!!unavailable && !chatting} aria-expanded={chatting}>
-            Chat
-          </Button>
-          <Button ref={giftBtn} icon={GiftIcon} onClick={() => setGiftOpen((v) => !v)} disabled={!!unavailable || busy} aria-expanded={giftOpen}>
-            Give a Gift
-          </Button>
-          {!req ? (
-            <Button icon={Question} onClick={() => send("ask_request", { agent: id }, id)} disabled={!!unavailable || busy}>
-              Ask for a Wish
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {replay ? null : (
+          <>
+            <Button ref={chatBtn} tone="primary" icon={ChatCircleDots} onClick={() => setChat(chatting ? null : id)} disabled={!!unavailable && !chatting} aria-expanded={chatting}>
+              Chat
             </Button>
-          ) : null}
-          <Button
-            tone="ghost"
-            icon={Crosshair}
-            aria-pressed={follow === id}
-            className={follow === id ? "bg-sun/25" : ""}
-            onClick={() => {
-              if (follow === id) setFollow(null);
-              else {
-                setFollow(id);
-                if (a && a.x !== null && a.y !== null) focusOn([a.x, a.y]);
-              }
-            }}
-          >
-            Follow
-          </Button>
+            <Button ref={giftBtn} icon={GiftIcon} onClick={() => setGiftOpen((v) => !v)} disabled={!!unavailable || busy} aria-expanded={giftOpen}>
+              Give a Gift
+            </Button>
+            {!req ? (
+              <Button icon={Question} onClick={() => send("ask_request", { agent: id }, id)} disabled={!!unavailable || busy}>
+                Ask for a Wish
+              </Button>
+            ) : null}
+          </>
+        )}
+        <Button
+          tone={replay ? "soft" : "ghost"}
+          icon={Crosshair}
+          aria-pressed={follow === id}
+          className={follow === id ? "bg-sun/25" : ""}
+          onClick={() => {
+            if (follow === id) setFollow(null);
+            else {
+              setFollow(id);
+              if (a && a.x !== null && a.y !== null) focusOn([a.x, a.y]);
+            }
+          }}
+        >
+          Follow
+        </Button>
+        {replay ? (
+          <span className="text-sm text-[var(--muted)]">A recording: chatting, gifts and wishes need a live town.</span>
+        ) : (
           <Button tone="ghost" icon={Wind} onClick={() => setWhisper(whisper === null ? "" : null)} aria-expanded={whisper !== null} title="Research: add an inner-voice memory (paper §3.1)">
             Whisper
           </Button>
-          {unavailable ? <span className="text-sm font-semibold text-[var(--muted)]">{unavailable}</span> : null}
-        </div>
-      )}
+        )}
+        {unavailable && !replay ? <span className="text-sm font-semibold text-[var(--muted)]">{unavailable}</span> : null}
+      </div>
 
       <AnimatePresence>
         {giftOpen ? (

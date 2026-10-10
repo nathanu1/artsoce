@@ -282,6 +282,10 @@ export function TownView() {
         st.select({ kind: "resident", id: hit.id });
         break;
       case "sparkle":
+        if (st.poll?.replay) {
+          st.toast({ tone: "info", title: "A sparkle from a conversation", body: "Two residents left it behind. In a live town you can collect it as a motif." });
+          break;
+        }
         void api
           .action("collect_sparkle", { sparkle: hit.id })
           .then((r) => st.addPending(r.seq, "collect"))

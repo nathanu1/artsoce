@@ -1,6 +1,7 @@
 import { CaretDown, CaretUp, ChatsCircle, Info, Sparkle, Star, Warning, X } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
+import { DEMO } from "../demo/flag";
 import { formatTime } from "../lib/time";
 import { useTown } from "../store";
 import type { Theme } from "../types";
@@ -29,7 +30,7 @@ export function Toasts() {
   }, [toasts, paused, dismiss]);
   return (
     <div
-      className="pointer-events-none fixed right-3 top-[180px] z-20 flex w-[min(92vw,340px)] flex-col gap-2 sm:right-4 md:top-24"
+      className={`pointer-events-none fixed right-3 z-20 flex w-[min(92vw,340px)] flex-col gap-2 sm:right-4 md:top-24 ${DEMO ? "top-[300px]" : "top-[180px]"}`}
       aria-live="polite"
       role="status"
       onFocus={() => setPaused(true)}

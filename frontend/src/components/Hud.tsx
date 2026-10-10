@@ -1,8 +1,11 @@
 import { ArrowClockwise, ArrowCounterClockwise, Binoculars, CloudMoon, FastForward, Flask, Hammer, Minus, Notebook, Pause, Play, Plus, Sun, SunHorizon, Warning } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { DemoBar } from "../demo/DemoBar";
+import { DEMO } from "../demo/flag";
+import { viewHref } from "../lib/route";
 import { failureBody } from "../lib/text";
-import { formatDay, formatNumber, formatTime, hourOf } from "../lib/time";
+import { formatDate, formatDay, formatNumber, formatTime, hourOf } from "../lib/time";
 import { useTown } from "../store";
 import { LookAround } from "./LookAround";
 import { Button, IconButton, MotifCount } from "./ui";
@@ -32,6 +35,9 @@ export function Hud() {
   const nextLevel = pulse ? info.content.levels.find((l) => l.level === pulse.level + 1) : undefined;
   const progress = pulse ? (pulse.next_at ? (pulse.points - levelFloor) / Math.max(1, pulse.next_at - levelFloor) : 1) : 0;
   const error = poll?.error ?? null;
+  // a replay of `ga play` only plays and pauses; the demo recording also has speeds (and replays from the end)
+  const clockControls = !poll?.replay || DEMO;
+  const atEnd = poll?.status === "finished";
 
   // Retry stays busy until the town reports back (the error clears) or gives up
   useEffect(() => {
@@ -83,11 +89,18 @@ export function Hud() {
         <TimeIcon size={22} weight="fill" color={hour >= 6 && hour < 20 ? "#f2a33a" : "#8ea6ff"} aria-hidden="true" />
         <div className="px-1 text-center">
           <div className="font-display text-base font-bold leading-tight tabular">{clock ? formatTime(clock.time) : "…"}</div>
-          <div className="text-[11px] font-bold text-[var(--muted)]">{clock ? formatDay(clock.time) : "Waking up…"}</div>
+          <div className="whitespace-nowrap text-[11px] font-bold text-[var(--muted)]" title={clock ? formatDay(clock.time) : undefined}>
+            {clock ? formatDate(clock.time) : "Waking up…"}
+          </div>
         </div>
-        {poll?.replay ? null : (
+        {clockControls ? (
           <>
-            <IconButton label={poll?.paused ? "Play (Space)" : "Pause (Space)"} icon={poll?.paused ? Play : Pause} onClick={() => control(poll?.paused ? "resume" : "pause")} disabled={!poll || poll.status === "finished" || !!poll.error} />
+            <IconButton
+              label={DEMO && atEnd ? "Play Again" : poll?.paused ? "Play (Space)" : "Pause (Space)"}
+              icon={poll?.paused ? Play : Pause}
+              onClick={() => control(poll?.paused ? "resume" : "pause")}
+              disabled={!poll || (atEnd && !DEMO) || !!poll.error}
+            />
             <div className="flex rounded-full bg-[var(--panel-2)] p-1" role="group" aria-label="Speed">
               {(["slow", "normal", "fast"] as const).map((s) => (
                 <button
@@ -104,8 +117,9 @@ export function Hud() {
               ))}
             </div>
           </>
+        ) : (
+          <IconButton label={poll?.paused ? "Play the Replay" : "Pause the Replay"} icon={poll?.paused ? Play : Pause} onClick={() => control(poll?.paused ? "resume" : "pause")} />
         )}
-        {poll?.replay ? <IconButton label={poll?.paused ? "Play the Replay" : "Pause the Replay"} icon={poll?.paused ? Play : Pause} onClick={() => control(poll?.paused ? "resume" : "pause")} /> : null}
       </div>
 
       {/* town tools */}
@@ -114,12 +128,11 @@ export function Hud() {
         <IconButton label="Look Around (L)" icon={Binoculars} active={look} aria-expanded={look} onClick={() => setLook(!look)} />
         {poll?.replay ? null : <IconButton label="Build and Decorate (B)" icon={Hammer} pressed={mode === "build"} onClick={() => setMode(mode === "build" ? "play" : "build")} />}
         <a
-          href="/inspector"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Research Inspector (opens a new tab)"
+          href={viewHref("inspector")}
+          {...(DEMO ? {} : { target: "_blank", rel: "noreferrer" })}
+          aria-label={DEMO ? "Research Inspector" : "Research Inspector (opens a new tab)"}
           title="Research Inspector"
-          className="inline-flex size-11 items-center justify-center rounded-full bg-[var(--panel-2)] text-[var(--text)] transition-colors hover:bg-[var(--panel-hover)] max-sm:hidden"
+          className={`inline-flex size-11 items-center justify-center rounded-full bg-[var(--panel-2)] text-[var(--text)] transition-colors hover:bg-[var(--panel-hover)] ${poll?.replay ? "" : "max-sm:hidden"}`}
         >
           <Flask size={21} weight="bold" aria-hidden="true" />
         </a>
@@ -151,7 +164,8 @@ export function Hud() {
       {/* status */}
       <div className="pointer-events-none absolute inset-x-3 top-[140px] flex flex-col items-center gap-2 md:inset-x-auto md:left-1/2 md:top-[84px] md:-translate-x-1/2">
         {info.mode === "mock" ? <span className="rounded-full bg-[var(--panel)]/90 px-3 py-1 text-xs font-bold text-[var(--muted)] shadow">MOCK model: residents’ words are placeholders</span> : null}
-        {poll?.replay ? <span className="rounded-full bg-[var(--panel)]/90 px-3 py-1 text-xs font-bold text-[var(--muted)] shadow">Replay: no model calls, view only</span> : null}
+        {poll?.replay && !DEMO ? <span className="rounded-full bg-[var(--panel)]/90 px-3 py-1 text-xs font-bold text-[var(--muted)] shadow">Replay: no model calls, view only</span> : null}
+        {DEMO ? <DemoBar /> : null}
         {thinking.length && info.mode === "live" ? (
           <span className="max-w-[min(92vw,520px)] truncate rounded-full bg-[var(--panel)]/90 px-3 py-1 text-xs font-bold text-[var(--muted)] shadow">
             <span translate="no">{info.llm.model}</span> is thinking for {thinking.map((id) => info.residents.find((r) => r.id === id)?.first_name ?? "the town").join(", ")}…

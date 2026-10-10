@@ -1,0 +1,8 @@
+/* Self-hosted faces for `ga play` (the demo build loads the same families from Google Fonts). */
+@import "@fontsource/fredoka/latin-500.css";
+@import "@fontsource/fredoka/latin-600.css";
+@import "@fontsource/fredoka/latin-700.css";
+@import "@fontsource/fredoka/latin-ext-500.css";
+@import "@fontsource/fredoka/latin-ext-600.css";
+@import "@fontsource/fredoka/latin-ext-700.css";
+@import "@fontsource-variable/nunito";

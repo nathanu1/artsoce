@@ -10,6 +10,9 @@ import { ResidentCard } from "./components/ResidentCard";
 import { Toasts, TownTalk } from "./components/Toasts";
 import { TownView } from "./components/TownView";
 import { decodeMap } from "./lib/map";
+import { DEMO } from "./demo/flag";
+import { Welcome } from "./demo/Welcome";
+import { replaceQuery, useView } from "./lib/route";
 import { hourOf } from "./lib/time";
 import { useTown, type NotebookTab } from "./store";
 
@@ -143,7 +146,8 @@ function Town() {
   const hour = clock ? Math.floor(hourOf(clock.time) * 4) / 4 : null;
   useEffect(() => {
     if (hour === null) return;
-    const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    const forced = document.documentElement.dataset.theme;
+    const dark = forced === "dark" || (forced !== "light" && (window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false));
     const night = hour < 5.5 || hour >= 20;
     const dusk = (hour >= 17.5 && hour < 20) || (hour >= 5.5 && hour < 7);
     const [top, bottom] = night ? ["#1c2a4f", "#3a4d78"] : dusk ? (dark ? ["#5a3b4a", "#7a5560"] : ["#f3a37f", "#ffd9a8"]) : dark ? ["#1d2a4a", "#3b4f74"] : ["#8fd0f2", "#e6f6fd"];
@@ -163,8 +167,7 @@ function Town() {
     const q = new URLSearchParams(window.location.search);
     if (notebookOpen) q.set("notebook", notebookTab);
     else q.delete("notebook");
-    const search = q.toString();
-    window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
+    replaceQuery(q);
   }, [notebookOpen, notebookTab]);
 
   if (!info || !map) return <Loading error={bootError} />;
@@ -175,6 +178,7 @@ function Town() {
         <div className="pointer-events-none absolute inset-0 z-10">
           {mode === "build" ? <BuildPanel /> : <Hud />}
           {mode === "play" && !selection ? <TownTalk /> : null}
+          {DEMO && !selection ? <Welcome /> : null}
           <AnimatePresence>
             {mode === "play" && selection?.kind === "resident" ? <ResidentCard key={selection.id} id={selection.id} /> : null}
             {mode === "play" && selection?.kind === "object" ? <ObjectCard key={selection.address} address={selection.address} /> : null}
@@ -189,5 +193,5 @@ function Town() {
 }
 
 export default function App() {
-  return window.location.pathname.startsWith("/inspector") ? <Inspector /> : <Town />;
+  return useView() === "inspector" ? <Inspector /> : <Town />;
 }

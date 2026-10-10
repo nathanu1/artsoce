@@ -255,7 +255,8 @@ Everything here is class X, off unless `game.enabled: true`; design and rules in
 | S-6 | Player actions are logged and applied at step boundaries: exact replay with zero model calls; crash resume applies each action once. | prompt §6, §11 | X | `game/actions.py`, engine hooks | `test_game.py::test_a_played_run_replays_exactly_without_any_model_call`, `::test_resume_after_a_crash_reapplies_player_actions_once`, `test_game_session.py::test_a_session_resumes_from_disk_and_replays_without_calls` | |
 | S-7 | Live session: speed, pause, actions while paused, a model failure stops at the checkpoint and Retry continues; HTTP API. | user request | X | `game/session.py`, `game/api.py`, `ga play` | `test_game_session.py::test_live_session_steps_applies_actions_and_pauses`, `::test_a_model_failure_stops_at_the_checkpoint_and_retry_continues`, `::test_http_interface` | |
 | S-8 | Six configurable affinity themes, motifs, gifts, catalog, paints, templates, five Town Pulse levels. | user request | X | `configs/game/*.yaml`, `game/content.py`, `game/affinity.py` | `test_game.py::test_content_needs_exactly_six_consistent_themes`, `::test_affinities_come_from_identity_activities_and_places`, `::test_conversations_leave_social_motifs_to_collect` | Keyword scoring, no model calls. |
-| S-9 | Browser front end (diorama town, notebook, build mode) and a research inspector that is never fed back to residents. | user request | X | `frontend/` (built into `game/web/`); `/inspector` over the viewer API | `frontend/tests/*.test.ts` (22 tests) | Mock runs and mock embeddings are flagged in the inspector. |
+| S-9 | Browser front end (diorama town, notebook, build mode) and a research inspector that is never fed back to residents. | user request | X | `frontend/` (built into `game/web/`); `/inspector` over the viewer API | `frontend/tests/*.test.ts` (25 tests) | Mock runs and mock embeddings are flagged in the inspector. |
+| S-10 | A recorded town as a static page: replay with no calls, export frames, state changes, events and inspector data; a demo build plays them in the browser. | user request | X | `game/export_demo.py`, `ga export-demo`; `frontend/src/demo/`, `npm run build:demo` | `test_game_session.py::test_a_recorded_town_exports_as_static_demo_data_without_calls`, `frontend/tests/player.test.ts` | View-only by construction: the demo API refuses every action. |
 
 ## 3. Paper vs released code: verified differences
 
@@ -386,7 +387,7 @@ All seven milestones are implemented, plus the local-model adapters (O-7) and th
 
 | Check | Result |
 | --- | --- |
-| Test suite (`pytest`) | 176 tests pass offline (retrieval, gateway, reflection, summaries, planning, world, behavior scenarios, engine resume/replay/budget, scenario audit, interviews, metrics, statistics, exports, experiment runner, prompt examples, CLI and viewer API, local-model adapters, town game and its live session). |
+| Test suite (`pytest`) | 177 tests pass offline (retrieval, gateway, reflection, summaries, planning, world, behavior scenarios, engine resume/replay/budget, scenario audit, interviews, metrics, statistics, exports, experiment runner, prompt examples, CLI and viewer API, local-model adapters, town game and its live session). |
 | Scenario import | Re-importing the official checkout at `fe05a71` reproduces the committed scenario files byte for byte; the n25 audit is clean under the paper policy (party: Isabella only; candidacy: Sam only). |
 | Offline five-agent, two-day run (`configs/offline_pilot_2day.yaml`) | Completes in about a minute; evaluation, interviews (500 answers), blinded export and the viewer were exercised on it. MOCK. |
 | Offline 25-agent, two-day run | Completed in 6.6 minutes: 32,970 mock calls, about 17.9M estimated input tokens (real prompts, chars/4), 19,291 memories, 228 conversations, 3,615 reflection memories, about 0.5 GB on disk with snapshots. Evaluation took 44 s. MOCK: these numbers describe the pipeline's load, not agent behavior. |
@@ -396,7 +397,7 @@ All seven milestones are implemented, plus the local-model adapters (O-7) and th
 | Resume | A run crashed mid-way and resumed reaches the same state as an uninterrupted run, paying for no call twice. |
 | Local models (Ollama, OpenAI-compatible) | Adapters, a three-agent simulation over HTTP and its call-free replay pass against a fake server. **No real local model was run.** |
 | Town game | A scripted session (`configs/game/demo_actions.jsonl`) and live sessions in the browser were played with the MOCK model: chat, requests, gifts, search, building, replay and resume. MOCK. |
-| Front end | 22 unit tests; type check; a scripted browser walkthrough (desktop and phone sizes) of the town, notebook, chat, build mode and inspector. |
+| Front end | 25 unit tests; type check; a scripted browser walkthrough (desktop and phone sizes) of the town, notebook, chat, build mode and inspector. |
 | Live API | **Not run.** No credentials were available. |
 
 Known limitations: the mock model is a crude fixture (its dialogue and reflections are mechanical);

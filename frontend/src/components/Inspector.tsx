@@ -2,6 +2,8 @@ import { ArrowLeft, Flask, Warning, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { formatDayTime, formatDecimal, formatNumber, formatTime } from "../lib/time";
+import { DEMO } from "../demo/flag";
+import { replaceQuery, viewHref } from "../lib/route";
 import { TabList, tabPanelProps } from "./Tabs";
 import { Button, IconButton } from "./ui";
 
@@ -46,8 +48,7 @@ function useQueryParam(key: string, fallback = ""): [string, (v: string) => void
     const q = new URLSearchParams(window.location.search);
     if (value && value !== fallback) q.set(key, value);
     else q.delete(key);
-    const search = q.toString();
-    window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
+    replaceQuery(q);
   }, [key, value, fallback]);
   return [value, setValue];
 }
@@ -67,6 +68,7 @@ export function Inspector() {
     if (!agent && agents.length) setAgent(agents[0].id);
   }, [agent, agents, setAgent]);
   const link = (id: string) => {
+    if (DEMO) return viewHref("inspector");
     const q = new URLSearchParams(window.location.search);
     q.set("agent", id);
     return `/inspector?${q.toString()}`;
@@ -89,7 +91,7 @@ export function Inspector() {
           <Button tone="soft" onClick={() => setRefresh((n) => n + 1)}>
             Refresh
           </Button>
-          <a href="/" className="inline-flex min-h-10 items-center gap-2 rounded-full bg-sun px-4 font-display text-[15px] font-semibold text-[#2a2838] transition-[filter] hover:brightness-105">
+          <a href={viewHref("town")} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-sun px-4 font-display text-[15px] font-semibold text-[#2a2838] transition-[filter] hover:brightness-105">
             <ArrowLeft size={18} weight="bold" aria-hidden="true" /> Back to Town
           </a>
         </div>

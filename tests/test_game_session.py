@@ -166,3 +166,34 @@ def test_http_interface(tmp_path):
         assert client.get("/research/api/run").json()["run_id"] == "town"  # the read-only research API
     finally:
         s.stop()
+
+
+def test_a_recorded_town_exports_as_static_demo_data_without_calls(tmp_path):
+    from generative_agents.game.export_demo import FRAME_FIELDS, export_demo
+
+    cfg = town_cfg(end="2023-02-13T10:05:00")
+    s = make_session(tmp_path, cfg=cfg, speed="max")
+    s.submit("chat", {"agent": "klaus_mueller", "text": "Hello Klaus!"})
+    s.start()
+    wait_for(lambda: s.poll()["status"] == "finished", timeout=120)
+    s.stop()
+    res = export_demo(tmp_path / "town", tmp_path / "site", scratch=tmp_path / "work")
+    demo = tmp_path / "site" / "demo"
+    assert {p.name for p in demo.iterdir()} == {"info.json", "map.json", "timeline.json", "objects.json", "research.json"}
+    tl = json.loads((demo / "timeline.json").read_text())
+    assert len(tl["frames"]) == res["frames"] == 31 and sorted(tl["agents"]) == sorted(TRIO)
+    for row in tl["frames"]:
+        assert len(row) == 1 + len(tl["agents"]) and all(len(a) == len(FRAME_FIELDS) for a in row[1:])
+        activity = row[1][FRAME_FIELDS.index("activity")]
+        assert activity == -1 or 0 <= activity < len(tl["strings"])
+    assert {"game", "schedules", "objects"} <= set(tl["states"][0])
+    chats = [e for e in tl["feed"] if e["kind"] == "chat"]
+    assert chats and chats[0]["builder_line"] == "Hello Klaus!" and isinstance(chats[0]["step"], int)
+    info = json.loads((demo / "info.json").read_text())
+    assert info["mode"] == "replay" and len(info["residents"]) == 3
+    research = json.loads((demo / "research.json").read_text())
+    assert {"run", "manifest", "diffusion", "calls?limit=150"} <= set(research)
+    assert all(f"agent/{aid}/memories" in research for aid in tl["agents"])
+    listed = {c["id"] for c in research["calls?limit=150"]}
+    assert listed and all(f"call/{cid}" in research for cid in listed)
+    assert json.loads((tmp_path / "work" / "replay" / "manifest.json").read_text())["budget"]["usage"]["calls"] == 0  # replayed, not called

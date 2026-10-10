@@ -19,7 +19,7 @@ Every setting is tagged as **paper**, **released code**, **engineering choice** 
 deviation.
 
 > **What has actually been validated.** All of it runs offline with a deterministic mock model
-> and hash embeddings: 176 Python tests and 22 front-end tests pass, a five-agent and a 25-agent
+> and hash embeddings: 177 Python tests and 25 front-end tests pass, a five-agent and a 25-agent
 > two-day simulation complete, and evaluation, interviews, exports, replay, the viewer, a ten-run
 > reflection experiment and the town game work on them. **No live model has been called**: no
 > API credentials were available, and Ollama could not be installed in the build environment, so
@@ -73,6 +73,7 @@ A six-hour smoke run takes about five seconds: `ga run --config configs/offline_
 | `ga experiment --protocol FILE [--measured-run DIR] [--execute] [--yes]` | Reflection extension: plans and projects usage by default; runs only with `--execute`. |
 | `ga serve --run-dir DIR [--experiment DIR]` | Local read-only viewer and inspector. |
 | `ga play --config FILE` / `--resume DIR` / `--replay DIR` `[--speed S] [--paused] [--open] [--port N]` | The town game (extension): a live town in the browser at http://127.0.0.1:8080, research inspector at `/inspector`. Replays make no model calls. |
+| `ga export-demo --run-dir DIR --out DIR` | A recorded town as static files for the front end's demo build: a page that plays the recording (and its research inspector) in any browser, with no server and no model. |
 | `ga export --run-dir DIR` | JSONL events, transcripts, retrieval traces and model calls; CSV memories, plans and usage; Markdown run report. |
 | `ga prompt-examples --run-dir DIR [DIR ...] [--out DIR]` | One page per prompt template: source, information scope, output schema and the smallest recorded call exactly as sent and received (plus a repaired exchange, when there was one). |
 | `ga import-scenario --source CHECKOUT` / `ga audit-scenario` | Rebuild scenario files from the official data (byte-identical) and audit seeds, knowledge scoping, spawn tiles and places. |
@@ -151,6 +152,15 @@ The front end lives in `frontend/` (React, Tailwind, Three.js). Its built bundle
 `ga play` needs no Node.js; to change it, `cd frontend && npm ci && npm run dev` (with `ga play`
 running) and `npm run build`.
 
+To share a town without a server, record it, build the demo page and export the recording into it
+(`python examples/record_demo_town.py` makes the scripted morning used for the published demo):
+
+```bash
+cd frontend && npm run build:demo && cd ..
+ga export-demo --run-dir runs/<id> --out frontend/dist-demo
+python -m http.server -d frontend/dist-demo 8090     # open http://127.0.0.1:8090/demo.html
+```
+
 ## How it works
 
 ```
@@ -204,9 +214,9 @@ The full list, with sources, is in the spec (§3 and §6). In short:
 ## Tests
 
 ```bash
-pytest             # 176 tests, offline, about 30 seconds
+pytest             # 177 tests, offline, about 30 seconds
 ruff check src tests examples
-cd frontend && npm ci && npm test && npm run typecheck   # 22 front-end unit tests
+cd frontend && npm ci && npm test && npm run typecheck   # 25 front-end unit tests
 ```
 
 They cover the mechanisms that could invalidate an experiment: the recency formula and
@@ -256,7 +266,7 @@ prompts/                 23 versioned prompt templates (front matter names the s
 scenarios/               imported Smallville data: smallville_n25, pilot3, pilot5
 configs/                 example configurations, Appendix B question banks, game/ content
 docs/                    reproduction spec, walkthrough, experiment protocol, town game
-examples/                walkthrough.py
+examples/                walkthrough.py, record_demo_town.py
 tests/
 ```
 

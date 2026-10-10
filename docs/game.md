@@ -152,6 +152,17 @@ A failed model call stops the town at its last checkpoint with the error shown; 
   places it; R rotates, D duplicates, Delete removes, Ctrl+Z and Ctrl+Shift+Z (⌘ on a Mac) undo
   and redo. The notebook page and the inspector's view, filters and open call live in the URL.
 
+## Sharing a recorded town
+
+`ga export-demo --run-dir DIR --out SITE` replays a run (no model calls) and writes what the
+interface would have polled into `SITE/demo/`: one frame per step (with string tables, so a
+three-resident morning is about 0.4 MB), the game state whenever it changes, every event with its
+step, and the research inspector's data at the end of the run. `npm run build:demo` builds the
+same interface in a demo mode that plays those files: play, pause, three speeds, a timeline to
+drag, and chips for the moments worth seeing (chats, gifts, builds, wishes, resident
+conversations). Everything is view-only; chatting, gifts and building need a live town. The demo
+page uses hash links (`#inspector`) so it works inside frames that cannot change their path.
+
 ## Research inspector
 
 `/inspector` shows, per resident: the memory stream with kinds, origins and importance;

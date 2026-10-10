@@ -1,12 +1,9 @@
+import { ApiError } from "./apiError";
+import { demoApi } from "./demo/api";
+import { DEMO } from "./demo/flag";
 import type { BuildCheck, BuildOp, Info, MapPayload, Poll, ResidentDetail } from "./types";
 
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
+export { ApiError };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
@@ -30,7 +27,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const post = <T>(path: string, body: unknown) => request<T>(path, { method: "POST", body: JSON.stringify(body) });
 
-export const api = {
+const liveApi = {
   info: () => request<Info>("/api/game/info"),
   map: () => request<MapPayload>("/api/game/map"),
   poll: (sinceStep: number, sinceFeed: number) => request<Poll>(`/api/game/poll?since_step=${sinceStep}&since_feed=${sinceFeed}`),
@@ -41,3 +38,8 @@ export const api = {
   object: (address: string) => request<{ address: string; name: string; place: string[]; search_theme: string | null }>(`/api/game/object?address=${encodeURIComponent(address)}`),
   research: <T>(path: string) => request<T>(`/research/api/${path}`),
 };
+
+export type Api = typeof liveApi;
+
+/** The town's server, or (in the demo build) a recording played back in the browser. */
+export const api: Api = DEMO ? demoApi : liveApi;

@@ -1,4 +1,4 @@
-import { ApiError } from "../api";
+import { ApiError } from "../apiError";
 
 /** Server reasons are lowercase clauses ("needs 1 more Bloom motif"); show them as sentences. */
 export function sentence(text: string): string {

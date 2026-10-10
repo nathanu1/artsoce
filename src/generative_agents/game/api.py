@@ -51,20 +51,11 @@ def _rle(arr: np.ndarray) -> list[list[int]]:
     return out
 
 
-def create_game_app(session: GameSession, *, web_dir: Path | None = None) -> FastAPI:
-    app = FastAPI(title="Smallville Lab town", docs_url=None, redoc_url=None)
+def town_info(session: GameSession) -> dict[str, Any]:
+    """Who lives in the town and what the game is made of (``/api/game/info``)."""
+
     sim, game = session.sim, session.game
     content = game.content
-    editor = game.editor
-    world = sim.world
-    reader = Database(sim.run_dir / "state.sqlite", read_only=True)
-    reader_lock = threading.Lock()
-
-    def rows(sql: str, params: tuple = ()) -> list[Any]:
-        with reader_lock:
-            return reader.query(sql, params)
-
-    # ------------------------------------------------------------------ static data
     residents = []
     for aid in sim.order:
         ident = sim.identities[aid]
@@ -84,7 +75,7 @@ def create_game_app(session: GameSession, *, web_dir: Path | None = None) -> Fas
             }
         )
     manifest_llm = sim.rt.provider.describe() if hasattr(sim.rt.provider, "describe") else {}
-    info_payload = {
+    return {
         "run_id": sim.run_id,
         "mode": "replay" if session.replay else sim.cfg.run_mode,
         "label": sim.cfg.run.label,
@@ -100,15 +91,18 @@ def create_game_app(session: GameSession, *, web_dir: Path | None = None) -> Fas
         "zones": game.zones,
     }
 
-    base_legend = list(editor._base_legend)
-    sector_names = list(world.legend["sector"])
-    arena_names = list(world.legend["arena"])
+
+def town_map(session: GameSession) -> dict[str, Any]:
+    """The base map, run-length encoded, plus what the front end needs to draw it (``/api/game/map``)."""
+
+    sim, game = session.sim, session.game
+    editor, world = game.editor, sim.world
     arenas = sorted({a for a in world.address_tiles if a.count(":") == 2})
-    map_payload = {
+    return {
         "world": world.world,
         "width": world.width,
         "height": world.height,
-        "legend": {"sector": sector_names, "arena": arena_names, "object": base_legend},
+        "legend": {"sector": list(world.legend["sector"]), "arena": list(world.legend["arena"]), "object": list(editor._base_legend)},
         "layers": {
             "collision": _rle(editor._base_collision),
             "sector": _rle(world.sector),
@@ -119,6 +113,27 @@ def create_game_app(session: GameSession, *, web_dir: Path | None = None) -> Fas
         "ground_objects": sorted(editor._ground_size),
         "objects": sorted(a for a in world.address_tiles if a.count(":") == 3 and not any(p.address == a for p in game.store.items())),
     }
+
+
+def object_info(session: GameSession, address: str) -> dict[str, Any]:
+    """What the object card shows about one object (``/api/game/object``)."""
+
+    return {"address": address, "name": address.rsplit(":", 1)[-1], "place": address.split(":")[1:3], "search_theme": session.game.aff.search_theme(address)}
+
+
+def create_game_app(session: GameSession, *, web_dir: Path | None = None) -> FastAPI:
+    app = FastAPI(title="Smallville Lab town", docs_url=None, redoc_url=None)
+    sim = session.sim
+    world = sim.world
+    reader = Database(sim.run_dir / "state.sqlite", read_only=True)
+    reader_lock = threading.Lock()
+
+    def rows(sql: str, params: tuple = ()) -> list[Any]:
+        with reader_lock:
+            return reader.query(sql, params)
+
+    info_payload = town_info(session)
+    map_payload = town_map(session)
 
     # ------------------------------------------------------------------ game endpoints
     @app.get("/api/game/info")
@@ -186,11 +201,10 @@ def create_game_app(session: GameSession, *, web_dir: Path | None = None) -> Fas
         return {"id": aid, "exchanges": list(reversed(exchanges)), "conversations": convs}
 
     @app.get("/api/game/object")
-    def object_info(address: str) -> dict[str, Any]:
+    def object_route(address: str) -> dict[str, Any]:
         if not world.exists(address):
             raise HTTPException(404, "unknown object")
-        theme = game.aff.search_theme(address)
-        return {"address": address, "name": address.rsplit(":", 1)[-1], "place": address.split(":")[1:3], "search_theme": theme}
+        return object_info(session, address)
 
     # ------------------------------------------------------------------ research inspector data (read-only)
     app.mount("/research", create_viewer_app(sim.run_dir))

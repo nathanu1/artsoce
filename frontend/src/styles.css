@@ -1,11 +1,19 @@
 @import "tailwindcss";
-@import "@fontsource/fredoka/latin-500.css";
-@import "@fontsource/fredoka/latin-600.css";
-@import "@fontsource/fredoka/latin-700.css";
-@import "@fontsource/fredoka/latin-ext-500.css";
-@import "@fontsource/fredoka/latin-ext-600.css";
-@import "@fontsource/fredoka/latin-ext-700.css";
-@import "@fontsource-variable/nunito";
+
+/*
+  Dark mode follows the system unless the page's root says otherwise: data-theme="light" or
+  "dark" (the artifact viewer sets it when the reader picks a theme) wins both ways.
+*/
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+}
 
 /*
   Design tokens.
@@ -15,7 +23,7 @@
 */
 @theme {
   --font-display: "Fredoka", ui-rounded, system-ui, sans-serif;
-  --font-sans: "Nunito Variable", ui-rounded, system-ui, sans-serif;
+  --font-sans: "Nunito Variable", "Nunito", ui-rounded, system-ui, sans-serif;
   --color-sun: #f2792b;
   --color-sun-deep: #c95d16;
   --color-cozy: #ee8a5c;
@@ -33,6 +41,7 @@
   --panel-2: #f3f1fa;
   --panel-3: #e9f4fb;
   --panel-hover: #e5e1f3;
+  --panel-edge: color-mix(in srgb, #fffdf9 60%, white);
   --line: #e2ddef;
   --text: #2a2838;
   --muted: #625f75;
@@ -42,12 +51,13 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --panel: #24273a;
     --panel-2: #2d3148;
     --panel-3: #293851;
     --panel-hover: #3b4060;
+    --panel-edge: color-mix(in srgb, #24273a 80%, white);
     --line: #3b405c;
     --text: #f2f0fa;
     --muted: #b7b3cc;
@@ -55,6 +65,21 @@
     --sky-top: #1d2a4a;
     --sky-bottom: #3b4f74;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --panel: #24273a;
+  --panel-2: #2d3148;
+  --panel-3: #293851;
+  --panel-hover: #3b4060;
+  --panel-edge: color-mix(in srgb, #24273a 80%, white);
+  --line: #3b405c;
+  --text: #f2f0fa;
+  --muted: #b7b3cc;
+  --shadow: 0 12px 32px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+  --sky-top: #1d2a4a;
+  --sky-bottom: #3b4f74;
 }
 
 /* Unlayered rules would beat every Tailwind utility, so all globals live in layers. */
@@ -93,15 +118,9 @@
 @layer components {
   .panel {
     background: var(--panel);
-    border: 3px solid color-mix(in srgb, var(--panel) 60%, white);
+    border: 3px solid var(--panel-edge);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .panel {
-      border-color: color-mix(in srgb, var(--panel) 80%, white);
-    }
   }
 
   .tabular {
